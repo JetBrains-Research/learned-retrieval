@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Any
+from typing import List, Any, Tuple
 
 @dataclass
 class ModelConfig:
@@ -21,16 +21,38 @@ class ModelConfig:
 class DatasetConfig:
     config_name: str
     with_context_files: bool
-    sep_symbol: str
+    sep_symbol: str = field(default=None)
+    do_filename_comment: bool = field(default=None)
+    do_body_comment: bool = field(default=None)
     context_preprocessing: str = field(default=None)
     context_selection: str = field(default=None)
-    context_file_ext: List[str] = field(default=None)
+    context_file_ext: Tuple[str] = field(default=None)
     line_types: List[str] = field(default=None)
 
     def __post_init__(self):
         if self.with_context_files:
             self.sep_symbol = '\n[SEP]\n'
-            self.context_preprocessing = "FC-BN-CS"
+            self.do_filename_comment = True
+            self.do_body_comment = False
+
+            self.context_preprocessing = ""
+            if self.do_filename_comment:
+                self.context_preprocessing += "FC"
+            else:
+                self.context_preprocessing += "FN"
+
+            if self.do_body_comment:
+                self.context_preprocessing += "-BC"
+            else:
+                self.context_preprocessing += "-BN"
+
+            if not self.sep_symbol.strip():
+                self.context_preprocessing += "-SN"
+            elif self.sep_symbol.strip()[1] == "S":
+                self.context_preprocessing += "-SS"
+            elif self.sep_symbol.strip()[1] == "M":
+                self.context_preprocessing += "-SM"
+
             self.context_selection = "BUF-1-R"
-            self.context_file_ext = "py-txt-md"
+            self.context_file_ext = (".py", ".txt", ".md")
             self.line_types = ["inproject", "infile"]

@@ -73,7 +73,7 @@ def eval(model_name: str | Path,
     
     ds_test = LcaPythonCompletionDataset(dataset_config)
 
-    results_path = f'eval/generated_data/pred_{config_name}_{with_context_files}_{limit_samples}.json'
+    results_path = f'eval/generated_data/pred_{config_name}_{with_context_files}_{limit_samples}.jsonl'
 
     wb_run = wandb.init(
         project=wandb_project_name,
