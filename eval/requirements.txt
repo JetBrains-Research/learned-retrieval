@@ -1,0 +1,8 @@
+fire==0.5.0
+torch==2.3.0
+datasets==2.19.2
+transformers==4.41.2
+tqdm==4.66.4
+wandb
+vllm
+# flash-attn==2.5.9.post1
