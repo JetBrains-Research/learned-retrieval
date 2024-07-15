@@ -30,9 +30,11 @@ class DatasetConfig:
     line_types: List[str] = field(default=None)
 
     def __post_init__(self):
+        self.line_types = ["inproject", "infile"]
+        self.sep_symbol = '\n[SEP]\n'
+
         if self.with_context_files:
-            self.sep_symbol = '\n[SEP]\n'
-            self.do_filename_comment = True
+            self.do_filename_comment = False
             self.do_body_comment = False
 
             self.context_preprocessing = ""
@@ -53,6 +55,12 @@ class DatasetConfig:
             elif self.sep_symbol.strip()[1] == "M":
                 self.context_preprocessing += "-SM"
 
-            self.context_selection = "BUF-1-R"
             self.context_file_ext = (".py", ".txt", ".md")
-            self.line_types = ["inproject", "infile"]
+
+        if not self.with_context_files:
+            self.context_selection = "NoC"
+        elif self.with_context_files and (self.line_types is None or self.context_file_ext is None):
+            self.context_selection = "BuF-1"
+        else:
+            self.context_selection = "BuF-1-R"
+

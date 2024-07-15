@@ -22,11 +22,8 @@ class LcaPythonCompletionDataset(Dataset):
             completion_filename = s['completion_file']['filename']
             completion_content = s['completion_file']['content'].split('\n')
 
-            if self.dataset_config.line_types is None:
-                self.dataset_config.line_types = s['completion_lines']
-
             for line_type in s['completion_lines']:
-                if line_type in self.dataset_config.line_types:
+                if self.dataset_config.line_types is None or line_type in self.dataset_config.line_types:
                     for line in s['completion_lines'][line_type]:
                         if line >= len(completion_content):
                             continue
@@ -39,11 +36,22 @@ class LcaPythonCompletionDataset(Dataset):
 
                         sample = {'completion': completion, 'gt': gt}
 
-                        if with_context_files:
+                        model_input = completion_filename + self.dataset_config.sep_symbol + completion                        
+                        self.data.append({
+                            'sample': sample,
+                            'completion_file': s['completion_file'],
+                            'completion_line': line,
+                            'completion_line_type': line_type,
+                            'model_input': model_input,
+                            })
+
+                        if not with_context_files:
+                            self.repo_snapshot_lens.append(1)
+                        else:    
                             num_of_context_files = 0
 
                             for context_filename, context_content in zip(s['repo_snapshot']['filename'], s['repo_snapshot']['content']):
-                                if context_filename.lower().endswith(self.dataset_config.context_file_ext):    
+                                if self.dataset_config.context_file_ext is None or context_filename.lower().endswith(self.dataset_config.context_file_ext):    
                                     num_of_context_files += 1
 
                                     model_input = self._prepare_model_input(completion_filename, 
@@ -60,19 +68,7 @@ class LcaPythonCompletionDataset(Dataset):
                                         'model_input': model_input,
                                         })
                                     
-                            self.repo_snapshot_lens.append(num_of_context_files)
-
-                        else:
-                            model_input = completion_filename + self.dataset_config.sep_symbol + completion                        
-                            self.repo_snapshot_lens.append(1)
-
-                            self.data.append({
-                                    'sample': sample,
-                                    'completion_file': s['completion_file'],
-                                    'completion_line': line,
-                                    'completion_line_type': line_type,
-                                    'model_input': model_input,
-                                    })
+                            self.repo_snapshot_lens.append(num_of_context_files + 1)
     
     def _prepare_model_input(self, completion_filename, completion, context_filename, context_content):
         if self.dataset_config.do_filename_comment:

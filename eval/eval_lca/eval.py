@@ -1,13 +1,12 @@
 '''
 Usage: 
-python eval.py --model_name deepseek-ai/deepseek-coder-1.3b-base
-               --device cuda
-               --with_context_files True
-               --config_name small_context
-               --max_seq_len 16000
-               --wandb_project_name lca-eval
-               --limit_samples 10
-               --vllm True
+CUDA_VISIBLE_DEVICES=6 python3 eval.py --model_name deepseek-ai/deepseek-coder-1.3b-base \
+                                       --device cuda \
+                                       --with_context_files True \
+                                       --config_name small_context \
+                                       --max_seq_len 16000 \
+                                       --wandb_project_name lca-eval \
+                                       --vllm True
 
 --limit-samples is to score on a small portion of the entire datset, scoring
 				on the entire dataset can take time
@@ -73,7 +72,8 @@ def eval(model_name: str | Path,
     
     ds_test = LcaPythonCompletionDataset(dataset_config)
 
-    results_path = f'eval/generated_data/pred_{config_name}_{with_context_files}_{limit_samples}.jsonl'
+    base_path = '/home/kolomyttseva/Git/learned-retrieval/eval/generated_data'
+    results_path = f'{base_path}/pred_{config_name}_{with_context_files}_{limit_samples}.jsonl'
 
     wb_run = wandb.init(
         project=wandb_project_name,
@@ -88,7 +88,8 @@ def eval(model_name: str | Path,
     data = []
     
     num_samples = ds_test.get_limited_len(limit_samples) if limit_samples is not None else len(ds_test)
-    
+    wb_run.log({"num_samples": num_samples})
+
     for n in tqdm(range(num_samples)):
         s = ds_test[n]
         
@@ -107,9 +108,10 @@ def eval(model_name: str | Path,
     em = exact_match(gts, preds, ds_test.get_repo_snapshot_lens(limit_samples))
 
     results = {
-        'num_samples': num_samples,
         'EM': em
     }
+
+    print(results)
 
     with open(results_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
