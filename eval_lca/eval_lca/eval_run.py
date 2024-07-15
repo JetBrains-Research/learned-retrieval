@@ -1,6 +1,6 @@
 '''
 Usage: 
-CUDA_VISIBLE_DEVICES=6 python3 eval_lca.py --model_name deepseek-ai/deepseek-coder-1.3b-base \
+CUDA_VISIBLE_DEVICES=6 python3 eval_run.py --model_name deepseek-ai/deepseek-coder-1.3b-base \
                                            --device cuda \
                                            --with_context_files True \
                                            --config_name medium_context \
@@ -31,7 +31,7 @@ from eval_lca.utils import set_seed, exact_match, StopOnNewLine
 from eval_lca.dataset import LcaPythonCompletionDataset
 from eval_lca.data_classes import ModelConfig, DatasetConfig
 
-def eval_lca(model_name: str | Path,
+def eval_run(model_name: str | Path,
              device: str | torch.DeviceObjType,
              config_name: str,
              composer: str,
@@ -123,4 +123,4 @@ def eval_lca(model_name: str | Path,
 
 
 if __name__ == '__main__':
-    Fire(eval_lca)
+    Fire(eval_run)
