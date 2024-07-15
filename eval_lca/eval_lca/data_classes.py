@@ -28,6 +28,7 @@ class DatasetConfig:
     context_selection: str = field(default=None)
     context_file_ext: Tuple[str] = field(default=None)
     line_types: List[str] = field(default=None)
+    composer: str = field(default=None)
 
     def __post_init__(self):
         self.line_types = ["inproject", "infile"]
@@ -55,12 +56,15 @@ class DatasetConfig:
             elif self.sep_symbol.strip()[1] == "M":
                 self.context_preprocessing += "-SM"
 
-            self.context_file_ext = (".py", ".txt", ".md")
+            # self.context_file_ext = (".py", ".txt", ".md")
 
         if not self.with_context_files:
             self.context_selection = "NoC"
-        elif self.with_context_files and (self.line_types is None or self.context_file_ext is None):
-            self.context_selection = "BuF-1"
         else:
-            self.context_selection = "BuF-1-R"
-
+            if self.composer == 'path_distance':
+                    self.context_selection = "PathDist-1"
+            elif self.composer == 'brute_force':
+                if (self.line_types is None or self.context_file_ext is None):
+                    self.context_selection = "BuF-1"
+                else:
+                    self.context_selection = "BuF-1-R"

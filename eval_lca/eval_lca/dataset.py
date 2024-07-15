@@ -3,6 +3,7 @@ from torch.utils.data import Dataset
 from tqdm.auto import tqdm
 
 from eval_lca.data_classes import DatasetConfig
+from eval_lca.utils import sort_filepathes
 
 class LcaPythonCompletionDataset(Dataset):
     dataset_name = 'JetBrains-Research/lca-project-level-code-completion'
@@ -12,15 +13,17 @@ class LcaPythonCompletionDataset(Dataset):
         self.ds = load_dataset(self.dataset_name, dataset_config.config_name)['test']
 
         print('Prepare data >>')
-        self.prepare_data(dataset_config.with_context_files)
+        self.prepare_data()
                         
-    def prepare_data(self, with_context_files):
+    def prepare_data(self):
         self.data = []
         self.repo_snapshot_lens = []
 
         for s in tqdm(self.ds):
             completion_filename = s['completion_file']['filename']
             completion_content = s['completion_file']['content'].split('\n')
+
+            filtered_context = self._filter_context(s['completion_file'], s['repo_snapshot'])
 
             for line_type in s['completion_lines']:
                 if self.dataset_config.line_types is None or line_type in self.dataset_config.line_types:
@@ -45,31 +48,39 @@ class LcaPythonCompletionDataset(Dataset):
                             'model_input': model_input,
                             })
 
-                        if not with_context_files:
+                        if not self.dataset_config.with_context_files:
                             self.repo_snapshot_lens.append(1)
                         else:    
-                            num_of_context_files = 0
+                            self.repo_snapshot_lens.append(len(filtered_context) + 1)
 
-                            for context_filename, context_content in zip(s['repo_snapshot']['filename'], s['repo_snapshot']['content']):
-                                if self.dataset_config.context_file_ext is None or context_filename.lower().endswith(self.dataset_config.context_file_ext):    
-                                    num_of_context_files += 1
+                            for context_filename, context_content in filtered_context:
+                                model_input = self._prepare_model_input(completion_filename, 
+                                                                        completion, 
+                                                                        context_filename, 
+                                                                        context_content)
+                                    
+                                self.data.append({
+                                    'sample': sample,
+                                    'completion_file': s['completion_file'],
+                                    'completion_line': line,
+                                    'completion_line_type': line_type,
+                                    'context_files': [{'filename': context_filename, 'content': context_content}],
+                                    'model_input': model_input,
+                                    })
 
-                                    model_input = self._prepare_model_input(completion_filename, 
-                                                                            completion, 
-                                                                            context_filename, 
-                                                                            context_content)
-                                    
-                                    self.data.append({
-                                        'sample': sample,
-                                        'completion_file': s['completion_file'],
-                                        'completion_line': line,
-                                        'completion_line_type': line_type,
-                                        'context_files': [{'filename': context_filename, 'content': context_content}],
-                                        'model_input': model_input,
-                                        })
-                                    
-                            self.repo_snapshot_lens.append(num_of_context_files + 1)
-    
+    def _filter_context(self, completion_file, repo_snapshot):
+        filtered_context = []
+
+        if self.dataset_config.composer == "brute_force":
+            for context_filename, context_content in zip(repo_snapshot['filename'], repo_snapshot['content']):
+                if self.dataset_config.context_file_ext is None or context_filename.lower().endswith(self.dataset_config.context_file_ext):    
+                    filtered_context.append((context_filename, context_content))
+        elif self.dataset_config.composer == "path_distance":
+            sorted_pathes = sort_filepathes(completion_file['filename'], repo_snapshot)
+            filtered_context.append(sorted_pathes[0])
+
+        return filtered_context
+
     def _prepare_model_input(self, completion_filename, completion, context_filename, context_content):
         if self.dataset_config.do_filename_comment:
             context_filename = f"# {context_filename}"

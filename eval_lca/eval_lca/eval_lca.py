@@ -1,12 +1,13 @@
 '''
 Usage: 
-CUDA_VISIBLE_DEVICES=6 python3 eval.py --model_name deepseek-ai/deepseek-coder-1.3b-base \
-                                       --device cuda \
-                                       --with_context_files True \
-                                       --config_name small_context \
-                                       --max_seq_len 16000 \
-                                       --wandb_project_name lca-eval \
-                                       --vllm True
+CUDA_VISIBLE_DEVICES=6 python3 eval_lca.py --model_name deepseek-ai/deepseek-coder-1.3b-base \
+                                           --device cuda \
+                                           --with_context_files True \
+                                           --config_name medium_context \
+                                           --max_seq_len 16000 \
+                                           --wandb_project_name lca-eval \
+                                           --composer path_distance \
+                                           --vllm True
 
 --limit-samples is to score on a small portion of the entire datset, scoring
 				on the entire dataset can take time
@@ -30,22 +31,20 @@ from eval_lca.utils import set_seed, exact_match, StopOnNewLine
 from eval_lca.dataset import LcaPythonCompletionDataset
 from eval_lca.data_classes import ModelConfig, DatasetConfig
 
-# import transformers
-# transformers.logging.set_verbosity_error()
+def eval_lca(model_name: str | Path,
+             device: str | torch.DeviceObjType,
+             config_name: str,
+             composer: str,
+             wandb_project_name: str,
+             max_seq_len: int,
+             max_completion_len: int = 128,
+             max_context_len: int | None = None,
+             with_context_files: bool = False,
+             limit_samples: int | None = None,
+             vllm: bool = False,
+             seed: int = 42,
+             ) -> dict:
 
-def eval(model_name: str | Path,
-         device: str | torch.DeviceObjType,
-         config_name: str,
-         wandb_project_name: str,
-         max_seq_len: int,
-         max_completion_len: int = 128,
-         max_context_len: int | None = None,
-         with_context_files: bool = False,
-         limit_samples: int | None = None,
-         vllm: bool = False,
-         seed: int = 42,
-         ) -> dict:
-    
     if limit_samples is not None:
         warn(f'Limiting the number of samples to evaluate on to {limit_samples}!')
 
@@ -68,7 +67,8 @@ def eval(model_name: str | Path,
                                stopping_criteria)
 
     dataset_config = DatasetConfig(config_name,
-                                   with_context_files)
+                                   with_context_files,
+                                   composer=composer)
     
     ds_test = LcaPythonCompletionDataset(dataset_config)
 
@@ -123,4 +123,4 @@ def eval(model_name: str | Path,
 
 
 if __name__ == '__main__':
-    Fire(eval)
+    Fire(eval_lca)
