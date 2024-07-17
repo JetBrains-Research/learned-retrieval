@@ -14,18 +14,21 @@ HTTPS clone URL: https://git.jetbrains.team/ml-4-se-lab/learned-retrieval.git
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-## Prerequisites
-
-What things you need to install the software and how to install them.
-
+## Setup
 ```
-Examples
+pip install -e .
 ```
 
-## Deployment
 
-Add additional notes about how to deploy this on a production system.
-
-## Resources
-
-Add links to external resources for this project, such as CI server, bug tracker, etc.
+## Usage
+```
+cd eval_lca
+CUDA_VISIBLE_DEVICES=6 python3 eval_run.py --model_name deepseek-ai/deepseek-coder-1.3b-base \
+                                           --device cuda \
+                                           --with_context_files True \
+                                           --config_name medium_context \
+                                           --max_seq_len 16000 \
+                                           --wandb_project_name lca-eval \
+                                           --composer path_distance \
+                                           --vllm True
+```

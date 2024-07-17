@@ -79,7 +79,7 @@ def eval_run(model_name: str | Path,
         config=asdict(model_config) | asdict(dataset_config)
     )
 
-    base_path = f'/home/kolomyttseva/Git/learned-retrieval/eval_lca/jsonl/{wb_run.id}/generated_data'
+    base_path = f'/home/kolomyttseva/Git/learned-retrieval/jsonl/{wb_run.id}/generated_data'
     Path(base_path).mkdir(parents=True, exist_ok=True)
 
     results_path = f'{base_path}/pred_{config_name}_{with_context_files}_{limit_samples}.jsonl'
