@@ -17,7 +17,6 @@ class LcaPythonCompletionDataset(Dataset):
                         
     def prepare_data(self):
         self.data = []
-        self.repo_snapshot_lens = []
 
         for s in tqdm(self.ds):
             completion_filename = s['completion_file']['filename']
@@ -37,36 +36,30 @@ class LcaPythonCompletionDataset(Dataset):
 
                         gt = completion_content[line]
 
-                        sample = {'completion': completion, 'gt': gt}
-
                         model_input = completion_filename + self.dataset_config.sep_symbol + completion                        
-                        self.data.append({
-                            'sample': sample,
-                            'completion_file': s['completion_file'],
-                            'completion_line': line,
-                            'completion_line_type': line_type,
-                            'model_input': model_input,
-                            })
 
-                        if not self.dataset_config.with_context_files:
-                            self.repo_snapshot_lens.append(1)
-                        else:    
-                            self.repo_snapshot_lens.append(len(filtered_context) + 1)
+                        context_files = [None]
+                        model_inputs = [model_input]
 
+                        if self.dataset_config.with_context_files:
                             for context_filename, context_content in filtered_context:
                                 model_input = self._prepare_model_input(completion_filename, 
                                                                         completion, 
                                                                         context_filename, 
                                                                         context_content)
-                                    
-                                self.data.append({
-                                    'sample': sample,
-                                    'completion_file': s['completion_file'],
-                                    'completion_line': line,
-                                    'completion_line_type': line_type,
-                                    'context_files': [{'filename': context_filename, 'content': context_content}],
-                                    'model_input': model_input,
-                                    })
+
+                                context_files.append([{'filename': context_filename, 'content': context_content}])
+                                model_inputs.append(model_input)
+                        
+                        self.data.append({
+                            'completion_content': completion,
+                            'ground_truth': gt,
+                            'completion_filename': completion_filename,
+                            'completion_line': line,
+                            'completion_line_type': line_type,
+                            'context_files': context_files,
+                            'model_inputs': model_inputs,
+                        })
 
     def _filter_context(self, completion_file, repo_snapshot):
         filtered_context = []
@@ -97,15 +90,8 @@ class LcaPythonCompletionDataset(Dataset):
 
         return model_input
         
-                    
     def __len__(self) -> int:
         return len(self.data)
     
-    def get_limited_len(self, limit_samples):
-        return sum(self.repo_snapshot_lens[:limit_samples])
-
-    def get_repo_snapshot_lens(self, limit_samples):
-        return self.repo_snapshot_lens[:limit_samples]
-
     def __getitem__(self, idx) -> dict[str, str]:
         return self.data[idx]

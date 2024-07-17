@@ -56,7 +56,7 @@ class DatasetConfig:
             elif self.sep_symbol.strip()[1] == "M":
                 self.context_preprocessing += "-SM"
 
-            # self.context_file_ext = (".py", ".txt", ".md")
+            self.context_file_ext = (".py")#, ".txt", ".md")
 
         if not self.with_context_files:
             self.context_selection = "NoC"

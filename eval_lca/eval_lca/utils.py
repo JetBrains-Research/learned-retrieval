@@ -2,19 +2,26 @@ import random
 import torch
 import os
 import numpy as np
+import pandas as pd
 
 from transformers.generation import StoppingCriteria
+import json
+from tqdm.auto import tqdm
+from typing import Dict, List
 
-def exact_match(gts, preds, repo_snapshot_lens):
-    start = 0
-    em = 0
 
-    for l in repo_snapshot_lens:
-        em_curr = sum(gt == pr for gt, pr in zip(gts[start:start+l], preds[start:start+l]))
-        em += (em_curr > 0)
-        start += l
-    
-    em /= len(repo_snapshot_lens)
+def exact_match(data: List[Dict[str, str]]):
+    df = pd.DataFrame(data)
+
+    df['EM'] = df['EMs'].apply(lambda x: max(x))
+    grouped_by_line_df = df.groupby("completion_line_type", as_index=False)['EM'].mean()
+
+    em = {"EM_all": df['EM'].mean()}
+
+    print(grouped_by_line_df)
+
+    for _, row in grouped_by_line_df.iterrows():
+        em[f"EM_{row['completion_line_type']}"] = row['EM']
 
     return em
 

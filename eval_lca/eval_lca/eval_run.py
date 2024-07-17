@@ -72,55 +72,53 @@ def eval_run(model_name: str | Path,
     
     ds_test = LcaPythonCompletionDataset(dataset_config)
 
-    base_path = '/home/kolomyttseva/Git/learned-retrieval/eval/generated_data'
-    results_path = f'{base_path}/pred_{config_name}_{with_context_files}_{limit_samples}.jsonl'
-
+   
     wb_run = wandb.init(
         project=wandb_project_name,
         name='_'.join([model_config.model, dataset_config.config_name]) + f'_{dataset_config.with_context_files}',
         config=asdict(model_config) | asdict(dataset_config)
     )
 
+    base_path = f'/home/kolomyttseva/Git/learned-retrieval/eval_lca/jsonl/{wb_run.id}/generated_data'
+    Path(base_path).mkdir(parents=True, exist_ok=True)
+
+    results_path = f'{base_path}/pred_{config_name}_{with_context_files}_{limit_samples}.jsonl'
+
     model = get_model(model_config, vllm)
 
-    gts = []
-    preds = []
     data = []
     
-    num_samples = ds_test.get_limited_len(limit_samples) if limit_samples is not None else len(ds_test)
+    num_samples = limit_samples if limit_samples is not None else len(ds_test)
     wb_run.log({"num_samples": num_samples})
 
     for n in tqdm(range(num_samples)):
         s = ds_test[n]
+        preds = []
+        em = []
+
+        for model_input in s['model_inputs']:
+            pred = generate_completion(model_input,
+                                       model,
+                                       tokenizer,
+                                       model_config,
+                                       vllm)
+            preds.append(pred)
+            em.append(int(pred == s['ground_truth']))
         
-        pred = generate_completion(s['model_input'],
-                                   model,
-                                   tokenizer,
-                                   model_config,
-                                   vllm)
-        
-        s['pred'] = pred
+        s['preds'] = preds
+        s['EMs'] = em
         data.append(s)
-
-        preds.append(pred)
-        gts.append(s['sample']['gt'])
     
-    em = exact_match(gts, preds, ds_test.get_repo_snapshot_lens(limit_samples))
+    em = exact_match(data)
 
-    results = {
-        'EM': em
-    }
-
-    print(results)
+    print(em)
 
     with open(results_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-    wb_run.log(results)
+    wb_run.log(em)
     wb_run.save(results_path)
     wb_run.finish()
-    
-
 
 if __name__ == '__main__':
     Fire(eval_run)
