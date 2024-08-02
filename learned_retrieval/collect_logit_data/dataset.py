@@ -2,8 +2,8 @@ from datasets import load_dataset
 from torch.utils.data import Dataset
 from tqdm.auto import tqdm
 
-from eval_lca.data_classes import DatasetConfig
-from eval_lca.utils import sort_filepathes
+from learned_retrieval.collect_logit_data.data_classes import DatasetConfig
+from learned_retrieval.collect_logit_data.utils import sort_filepathes
 
 class LcaPythonCompletionDataset(Dataset):
     dataset_name = 'JetBrains-Research/lca-project-level-code-completion'
@@ -14,7 +14,7 @@ class LcaPythonCompletionDataset(Dataset):
 
         print('Prepare data >>')
         self.prepare_data()
-                        
+
     def prepare_data(self):
         self.data = []
 
@@ -36,10 +36,19 @@ class LcaPythonCompletionDataset(Dataset):
 
                         gt = completion_content[line]
 
-                        model_input = completion_filename + self.dataset_config.sep_symbol + completion                        
+                        model_input = completion_filename + self.dataset_config.sep_symbol + completion
 
-                        context_files = [None]
-                        model_inputs = [model_input]
+                        context_files = [{'filename': '', 'content': ''}]
+
+                        self.data.append({
+                            'completion_content': completion,
+                            'ground_truth': gt,
+                            'completion_filename': completion_filename,
+                            'completion_line': line,
+                            'completion_line_type': line_type,
+                            'context_files': context_files,
+                            'model_inputs': model_input,
+                        })
 
                         if self.dataset_config.with_context_files:
                             for context_filename, context_content in filtered_context:
@@ -48,18 +57,18 @@ class LcaPythonCompletionDataset(Dataset):
                                                                         context_filename, 
                                                                         context_content)
 
-                                context_files.append([{'filename': context_filename, 'content': context_content}])
-                                model_inputs.append(model_input)
-                        
-                        self.data.append({
-                            'completion_content': completion,
-                            'ground_truth': gt,
-                            'completion_filename': completion_filename,
-                            'completion_line': line,
-                            'completion_line_type': line_type,
-                            'context_files': context_files,
-                            'model_inputs': model_inputs,
-                        })
+                                context_files = [{'filename': context_filename, 'content': context_content}]
+
+                                self.data.append({
+                                    # 'repo': s['repo'],
+                                    'completion_content': completion,
+                                    'ground_truth': gt,
+                                    'completion_filename': completion_filename,
+                                    'completion_line': line,
+                                    'completion_line_type': line_type,
+                                    'context_files': context_files,
+                                    'model_inputs': model_input,
+                                })
 
     def _filter_context(self, completion_file, repo_snapshot):
         filtered_context = []
@@ -82,16 +91,16 @@ class LcaPythonCompletionDataset(Dataset):
         if self.dataset_config.do_body_comment:
             context_filename = context_filename.split('\n')
             context_filename = "# " + '\n# '.join(context_filename) + '\n'
-            
+
         context_model_input = context_filename + self.dataset_config.sep_symbol + context_content
         completion_model_input = completion_filename + self.dataset_config.sep_symbol + completion
 
         model_input = context_model_input + self.dataset_config.sep_symbol + completion_model_input
 
         return model_input
-        
+
     def __len__(self) -> int:
         return len(self.data)
-    
+
     def __getitem__(self, idx) -> dict[str, str]:
         return self.data[idx]
