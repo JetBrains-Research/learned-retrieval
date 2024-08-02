@@ -48,14 +48,14 @@ def run(model_name: str | Path,
                                    with_context_files,
                                    composer=composer)
 
-    ds_test = LcaPythonCompletionDataset(dataset_config)
+    completion_dataset = LcaPythonCompletionDataset(dataset_config)
 
     wb_run = wandb.init(
         project=wandb_project_name,
         name='_'.join([model_config.model, dataset_config.config_name]) + f'_{dataset_config.with_context_files}',
         config=asdict(model_config) | asdict(dataset_config)
     )
-    num_samples = len(ds_test)
+    num_samples = len(completion_dataset)
     wb_run.log({"num_samples": num_samples})
 
     results_path = get_results_path(wb_run, dataset_config)
@@ -65,7 +65,7 @@ def run(model_name: str | Path,
     data = []
 
     for n in tqdm(range(num_samples)):
-        s = ds_test[n]
+        s = completion_dataset[n]
 
         cross_entropy, avg_cross_entropy, perplexity = get_ground_truth_logits(s['model_inputs'],
                                                                                s['ground_truth'],

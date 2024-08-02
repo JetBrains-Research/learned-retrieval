@@ -2,7 +2,7 @@ from vllm import LLM, SamplingParams
 from learned_retrieval.collect_generated_data.data_classes import ModelConfig
 
 import torch
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 def get_model(model_config: ModelConfig, vllm: bool = False):
     if vllm:
@@ -19,6 +19,12 @@ def get_model(model_config: ModelConfig, vllm: bool = False):
                                                      torch_dtype=torch.bfloat16).to(model_config.device)
 
     return model
+
+def get_tokenizer(model_config: ModelConfig):
+    tokenizer = AutoTokenizer.from_pretrained(model_config.model)
+    tokenizer.truncation_side = 'left'
+
+    return tokenizer 
 
 def generate_completion(model_input, model, tokenizer, model_config: ModelConfig, vllm: bool = False):
     if vllm:

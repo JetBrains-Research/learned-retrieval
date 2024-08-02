@@ -3,6 +3,7 @@ import torch
 import os
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
 from transformers.generation import StoppingCriteria
 from typing import Dict, List
@@ -33,6 +34,13 @@ def set_seed(seed: int = 42) -> None:
     # Set a fixed value for the hash seed
     os.environ["PYTHONHASHSEED"] = str(seed)
     print(f"Random seed set as {seed}")
+
+def get_results_path(wb_run, dataset_config):
+    base_path = f'/home/kolomyttseva/Git/learned-retrieval/jsonl/{wb_run.id}/generated_data'
+    Path(base_path).mkdir(parents=True, exist_ok=True)
+
+    results_path = f'{base_path}/pred_{dataset_config.config_name}_{dataset_config.with_context_files}.jsonl'
+    return results_path
 
 class StopOnNewLine(StoppingCriteria):
     def __init__(self, tokenizer):

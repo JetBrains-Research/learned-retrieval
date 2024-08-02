@@ -28,8 +28,8 @@ import torch
 from transformers.generation import StoppingCriteriaList
 from transformers import AutoTokenizer
 
-from learned_retrieval.collect_generated_data.model import get_model, generate_completion
-from learned_retrieval.collect_generated_data.utils import set_seed, exact_match, StopOnNewLine
+from learned_retrieval.collect_generated_data.model import get_model, get_tokenizer, generate_completion
+from learned_retrieval.collect_generated_data.utils import set_seed, get_results_path, exact_match, StopOnNewLine
 from learned_retrieval.collect_generated_data.dataset import LcaPythonCompletionDataset
 from learned_retrieval.collect_generated_data.data_classes import ModelConfig, DatasetConfig
 
@@ -48,8 +48,7 @@ def run(model_name: str | Path,
 
     set_seed(seed)
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    tokenizer.truncation_side = 'left'
+    tokenizer = get_tokenizer(model_name)
 
     if vllm:
         stopping_criteria = ['\n']
@@ -76,18 +75,13 @@ def run(model_name: str | Path,
         name='_'.join([model_config.model, dataset_config.config_name]) + f'_{dataset_config.with_context_files}',
         config=asdict(model_config) | asdict(dataset_config)
     )
+    num_samples = len(completion_dataset)
+    wb_run.log({"num_samples": num_samples})
 
-    base_path = f'/home/kolomyttseva/Git/learned-retrieval/jsonl/{wb_run.id}/generated_data'
-    Path(base_path).mkdir(parents=True, exist_ok=True)
-
-    results_path = f'{base_path}/pred_{config_name}_{with_context_files}.jsonl'
-
+    results_path = get_results_path(wb_run, dataset_config)
     model = get_model(model_config, vllm)
 
     data = []
-
-    num_samples = len(completion_dataset)
-    wb_run.log({"num_samples": num_samples})
 
     for n in tqdm(range(num_samples)):
         s = completion_dataset[n]
@@ -109,7 +103,6 @@ def run(model_name: str | Path,
     with open(results_path, 'w', encoding='utf-8') as f:
         df = pd.DataFrame(data)
         df.to_json(results_path, orient='records', lines=True)
-        # json.dump(data, f, ensure_ascii=False, indent=4)
 
     wb_run.log(em)
     wb_run.save(results_path)
