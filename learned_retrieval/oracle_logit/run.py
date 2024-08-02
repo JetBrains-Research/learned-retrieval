@@ -9,7 +9,7 @@ python3 run.py  --model_name Salesforce/codet5p-220m \
                 --learning_rate 2e-3 \
                 --batch_size 32 \
                 --num_workers 4 \
-                --num_epochs 20 \
+                --num_epochs 1 \
                 --max_length 128 \
                 --normalize_strategy mean_std_sigmoid
 '''
@@ -69,7 +69,7 @@ def run(model_name: str | Path,
     }
 
     print('>>Init model')
-    model = nn.DataParallel(BiEncoderModel(model_name)).to(device)
+    model = BiEncoderModel(model_name).to(device)
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.truncation_side = 'left'

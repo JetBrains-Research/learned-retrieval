@@ -51,8 +51,7 @@ def validate(model, tokenizer, dataloader, criterion, device, max_length=128):
 
 def evaluate(model, tokenizer, dataset, device, max_length=128):
     model.eval()  # Set the model to evaluation mode
-    correct_predictions = 0
-
+    
     groped_data = dataset.data.groupby(["completion_content"], as_index=False)
     groped_data = groped_data.agg(list)
 

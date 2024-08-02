@@ -17,11 +17,11 @@ def get_model(model_config: ModelConfig, vllm: bool = False):
     else:
         model = AutoModelForCausalLM.from_pretrained(model_config.model,
                                                      torch_dtype=torch.bfloat16).to(model_config.device)
-
+        model.eval()
     return model
 
-def get_tokenizer(model_config: ModelConfig):
-    tokenizer = AutoTokenizer.from_pretrained(model_config.model)
+def get_tokenizer(model_name: str):
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.truncation_side = 'left'
 
     return tokenizer 
