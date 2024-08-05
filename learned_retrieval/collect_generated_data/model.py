@@ -27,13 +27,15 @@ def get_tokenizer(model_name: str):
     return tokenizer 
 
 def generate_completion(model_input, model, tokenizer, model_config: ModelConfig, vllm: bool = False):
+    input_tokens = tokenizer(model_input, return_tensors='pt', max_length=model_config.max_context_len, truncation=True)
+
     if vllm:
         sampling_params = SamplingParams(temperature=0,
-                                        stop=model_config.stopping_criteria,
-                                        max_tokens=model_config.max_completion_len)
+                                         top_p=1.0,
+                                         stop=model_config.stopping_criteria,
+                                         max_tokens=model_config.max_completion_len)
 
-        input_tokens = tokenizer(model_input, return_tensors='pt')
-        input_ids = input_tokens['input_ids'][:, -model_config.max_context_len:]
+        input_ids = input_tokens['input_ids']
 
         with torch.no_grad():
             out = model.generate(prompt_token_ids=input_ids[0].tolist(),
@@ -41,19 +43,15 @@ def generate_completion(model_input, model, tokenizer, model_config: ModelConfig
                                 use_tqdm=False)
         pred = out[0].outputs[0].text
     else:
-        input_tokens = tokenizer(model_input, return_tensors='pt')
-        input_ids = input_tokens['input_ids'][:, -model_config.max_context_len:].to(model_config.device)
-
-        att_mask = input_tokens['attention_mask'][:, -model_config.max_context_len:].to(model_config.device)
+        input_tokens = {k: v.to(model_config.device) for k, v in input_tokens.items()}
 
         with torch.no_grad():
-            out = model.generate(input_ids,
-                                attention_mask=att_mask,
+            out = model.generate(**input_tokens,
                                 max_new_tokens=model_config.max_completion_len,
                                 stopping_criteria=model_config.stopping_criteria,
                                 pad_token_id=tokenizer.eos_token_id
                                 )
-        out_tokens = out[0, len(input_ids[0]) - 1:]
+        out_tokens = out[0, len(input_tokens['input_ids'][0]) - 1:]
         pred = tokenizer.decode(out_tokens).strip('\n')
 
     return pred

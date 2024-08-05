@@ -2,7 +2,7 @@
 Usage: 
 CUDA_VISIBLE_DEVICES=7 python3 run.py   --model_name deepseek-ai/deepseek-coder-1.3b-base \
                                         --device cuda \
-                                        --with_context_files False \
+                                        --with_context_files True \
                                         --config_name medium_context \
                                         --max_seq_len 16000 \
                                         --max_completion_len 128 \

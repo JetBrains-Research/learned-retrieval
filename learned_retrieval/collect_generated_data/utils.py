@@ -14,12 +14,12 @@ def exact_match(data: List[Dict[str, str]]):
     grouped_df = df.groupby(["completion_content", "ground_truth", "completion_filename", "completion_line", "completion_line_type"], as_index=False)
     grouped_df = grouped_df.agg(list)
 
-    df['EM'] = df['EMs'].apply(lambda x: max(x))
-    grouped_by_line_df = df.groupby("completion_line_type", as_index=False)['EM'].mean()
+    grouped_df['EM'] = grouped_df['EMs'].apply(lambda x: max(x))
+    grouped_by_line_df = grouped_df.groupby("completion_line_type", as_index=False)['EM'].mean()
 
-    em = {"EM_all": df['EM'].mean()}
+    em = {"EM_all": grouped_df['EM'].mean()}
 
-    print(grouped_by_line_df)
+    # print(grouped_by_line_df)
 
     for _, row in grouped_by_line_df.iterrows():
         em[f"EM_{row['completion_line_type']}"] = row['EM']
