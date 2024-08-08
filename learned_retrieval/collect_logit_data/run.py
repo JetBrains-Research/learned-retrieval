@@ -1,6 +1,6 @@
 '''
 Usage: 
-CUDA_VISIBLE_DEVICES=7 python3 run.py   --model_name deepseek-ai/deepseek-coder-1.3b-base \
+CUDA_VISIBLE_DEVICES=4 python3 run.py   --model_name deepseek-ai/deepseek-coder-1.3b-base \
                                         --device cuda \
                                         --with_context_files True \
                                         --config_name medium_context \
@@ -12,7 +12,6 @@ CUDA_VISIBLE_DEVICES=7 python3 run.py   --model_name deepseek-ai/deepseek-coder-
 from warnings import warn
 from pathlib import Path
 import pandas as pd
-import json
 import wandb
 from tqdm.auto import tqdm
 from dataclasses import asdict
@@ -70,8 +69,7 @@ def run(model_name: str | Path,
         cross_entropy, avg_cross_entropy, perplexity = get_ground_truth_logits(s['model_inputs'],
                                                                                s['ground_truth'],
                                                                                model,
-                                                                               tokenizer,
-                                                                               model_config)
+                                                                               tokenizer)
 
         s['cross_entropy'] = cross_entropy
         s['avg_cross_entropy'] = avg_cross_entropy
@@ -81,7 +79,6 @@ def run(model_name: str | Path,
 
     df = pd.DataFrame(data)
     df.to_json(results_path, orient='records', lines=True)
-    # json.dump(data, f, ensure_ascii=False, indent=4)
 
     wb_run.save(results_path)
     wb_run.finish()

@@ -1,11 +1,40 @@
 import torch
-from torch import nn
+import torch.nn as nn
 import numpy as np
 
-class CrossEntropyLoss(nn.Module):
+class BaseCrossEntropyLoss(nn.Module):
+    def __init__(self):
+        super(BaseCrossEntropyLoss, self).__init__()
+        self.bce_loss = torch.nn.BCEWithLogitsLoss()
+
+    def forward(self, *args, **kwargs):
+        raise NotImplementedError("Subclasses must implement the forward method")
+    
+    @staticmethod
+    def create_instance(dataset_type: str):
+        if dataset_type == 'pos_neg_pairs':
+            return PairsCrossEntropyLoss()
+        elif dataset_type == 'logit' or dataset_type == 'em':
+            return CrossEntropyLoss()
+        else:
+            raise ValueError(f"Unknown dataset type: {dataset_type}")
+        
+class CrossEntropyLoss(BaseCrossEntropyLoss):
     def __init__(self):
         super(CrossEntropyLoss, self).__init__()
-        self.bce_loss = torch.nn.BCEWithLogitsLoss()
+
+    def forward(self, completion, context, label):
+        hidden_size = completion.shape[1]
+
+        logits = torch.einsum('bh, bh -> b', completion, context) / np.sqrt(hidden_size)
+
+        loss = self.bce_loss(logits, label)
+
+        return loss
+
+class PairsCrossEntropyLoss(BaseCrossEntropyLoss):
+    def __init__(self):
+        super(PairsCrossEntropyLoss, self).__init__()
 
     def forward(self, completion, positive_context, negative_context):
         hidden_size = completion.shape[1]
@@ -17,38 +46,5 @@ class CrossEntropyLoss(nn.Module):
         labels = torch.cat((torch.ones_like(positive_logit), torch.zeros_like(negative_logit)), 0)
 
         loss = self.bce_loss(logits, labels)
-
-        return loss
-
-class ContrastiveLoss(nn.Module):
-    def __init__(self):
-        super(ContrastiveLoss, self).__init__()
-        self.similarity = nn.CosineSimilarity(dim=-1, eps=1e-7)
-        self.mse_loss = nn.MSELoss()
-
-    def forward(self, completion, positive_context, negative_context):
-        positive_score = self.similarity(completion, positive_context)
-        negative_score = self.similarity(completion, negative_context)
-
-        score_difference = positive_score - negative_score
-
-        target = torch.ones_like(score_difference)
-        loss = self.mse_loss(score_difference, target)
-
-        return loss
-
-class MarginContrastiveLoss(nn.Module):
-    def __init__(self, margin=0.5):
-        super(MarginContrastiveLoss, self).__init__()
-        self.similarity = nn.CosineSimilarity(dim=-1, eps=1e-7)
-        self.margin = margin
-        self.ranking_loss = nn.MarginRankingLoss(margin=margin)
-
-    def forward(self, completion, positive_context, negative_context):
-        positive_score = torch.abs(self.similarity(completion, positive_context))
-        negative_score = torch.abs(self.similarity(completion, negative_context))
-
-        target = torch.ones_like(positive_score)
-        loss = self.ranking_loss(positive_score, negative_score, target)
 
         return loss

@@ -3,70 +3,135 @@ import wandb
 import numpy as np
 from tqdm.auto import tqdm
 
-def train(model, dataloader, optimizer, criterion, device):
+from learned_retrieval.oracle.train.data_classes import Config
+from learned_retrieval.oracle.train.utils import save_checkpoint, calculate_loss
+from learned_retrieval.oracle.dataset.data_classes import DatasetsClass, DataLoadersClass
+
+def train(model, tokenizer, optimizer, criterion, dataloaders: DataLoadersClass, datasets: DatasetsClass, config: Config):
     model.train()
     total_loss = 0
-    for batch_idx, batch in enumerate(tqdm(dataloader)):
-        completion, positive_context, negative_context = batch
-        completion = {k: v.squeeze().to(device) for k, v in completion.items()}
-        positive_context = {k: v.squeeze().to(device) for k, v in positive_context.items()}
-        negative_context = {k: v.squeeze().to(device) for k, v in negative_context.items()}
+    optimizer.zero_grad()
 
-        optimizer.zero_grad()
-        completion_embeds, positive_context_embeds, negative_context_embeds = model(completion, positive_context, negative_context)
-        loss = criterion(completion_embeds, positive_context_embeds, negative_context_embeds)
+    for batch_idx, batch in enumerate(tqdm(dataloaders.train, desc='Train')):
+        loss = calculate_loss(batch, model, tokenizer, criterion, config)
+        loss = loss / config.accumulation_steps
+
         loss.backward()
+
+        if (batch_idx + 1) % config.accumulation_steps == 0:
+            optimizer.step()
+            optimizer.zero_grad()
+
+        total_loss += loss.item() * config.accumulation_steps
+
+        # Validation step
+        if config.validation_steps and (batch_idx + 1) % config.validation_steps == 0:
+            val_loss = validate(model, tokenizer, criterion, dataloaders.val, config)
+            em_without_context, em_with_context = evaluate(model, tokenizer, datasets.val, config)
+            print(f"Validation Loss at step {batch_idx + 1}: {val_loss:.4f}")
+            print(f"Evaluation: EM Without Context: {em_without_context:.4f}, EM With Context: {em_with_context:.4f}")
+            wandb.log({
+                'val_loss': val_loss,
+                'em_without_context': em_without_context,
+                'em_with_context': em_with_context,
+                'step': batch_idx + 1
+            })
+
+    if (batch_idx + 1) % config.accumulation_steps != 0:
         optimizer.step()
+        optimizer.zero_grad()
 
-        total_loss += loss.item()
-
-    average_loss = total_loss / len(dataloader)
+    average_loss = total_loss / len(dataloaders.train)
     return average_loss
 
-def validate(model, dataloader, criterion, device):
+def validate(model, tokenizer, criterion, dataloader, config: Config):
     model.eval()
-    total_loss = 0
-    with torch.no_grad():
-        for batch_idx, batch in enumerate(tqdm(dataloader)):
-            completion, positive_context, negative_context = batch
-            completion = {k: v.squeeze().to(device) for k, v in completion.items()}
-            positive_context = {k: v.squeeze().to(device) for k, v in positive_context.items()}
-            negative_context = {k: v.squeeze().to(device) for k, v in negative_context.items()}
 
-            completion_embeds, positive_context_embeds, negative_context_embeds = model(completion, positive_context, negative_context)
-            loss = criterion(completion_embeds, positive_context_embeds, negative_context_embeds)
-
-            total_loss += loss.item()
-
-    average_loss = total_loss / len(dataloader)
-    return average_loss
-
-def evaluate(model, dataloader, device):
-    model.eval()
-    correct_predictions = 0
-    total_predictions = 0
+    total_val_loss = 0
 
     with torch.no_grad():
-        for batch in tqdm(dataloader):
-            completion, positive_context, negative_context = batch
+        for batch_idx, batch in enumerate(tqdm(dataloader, desc='Validate')):
+            loss = calculate_loss(batch, model, tokenizer, criterion, config)
 
-            completion = {k: v.squeeze().to(device) for k, v in completion.items()}
-            positive_context = {k: v.squeeze().to(device) for k, v in positive_context.items()}
-            negative_context = {k: v.squeeze().to(device) for k, v in negative_context.items()}
+            total_val_loss += loss.item()
 
-            completion_embeds, positive_context_embeds, negative_context_embeds = model(completion, positive_context, negative_context)
+    average_val_loss = total_val_loss / len(dataloader)
+    return average_val_loss
 
-            hidden_size = completion_embeds.shape[1]
-            positive_logit = torch.einsum('bh, bh -> b', completion_embeds, positive_context_embeds) / np.sqrt(hidden_size)
-            negative_logit = torch.einsum('bh, bh -> b', completion_embeds, negative_context_embeds) / np.sqrt(hidden_size)
+def evaluate(model, tokenizer, dataset, config: Config):
+    model.eval()  # Set the model to evaluation mode
+    
+    groped_data = dataset.data.groupby(["completion"], as_index=False)
+    groped_data = groped_data.agg(list)
 
-            logits = torch.cat((positive_logit, negative_logit))
-            predictions = torch.round(torch.sigmoid(logits))
+    em_without_context = 0
+    em_with_context = 0
 
-            labels = torch.cat((torch.ones_like(positive_logit), torch.zeros_like(negative_logit)))
+    with torch.no_grad():
+        for _, item in tqdm(groped_data.iterrows(), total=len(groped_data), desc='Evaluate'):
+            completion = item['completion']
+            contexts = item['context']
+            em = item['EM']
 
-            correct_predictions += (predictions == labels).sum().item()
-            total_predictions += labels.size(0)
+            preds = []
 
-    accuracy = correct_predictions / total_predictions
-    return accuracy
+            for context in contexts:
+                completion_encoding = tokenizer(completion, return_tensors='pt', max_length=config.max_length, padding='max_length', truncation=True)
+                completion_encoding = {k: v.to(config.device) for k, v in completion_encoding.items()}
+
+                context_encoding = tokenizer(context, return_tensors='pt', max_length=config.max_length, padding='max_length', truncation=True)
+                context_encoding = {k: v.to(config.device) for k, v in context_encoding.items()}
+
+                completion_embeds, context_embeds = model(completion_encoding, context_encoding)
+                context_embeds = context_embeds[0]
+
+                hidden_size = completion_embeds.shape[1]
+                logit = torch.einsum('bh, bh -> b', completion_embeds, context_embeds) / np.sqrt(hidden_size)
+                pred = torch.sigmoid(logit)
+
+                preds.append(pred.item())
+
+            preds = np.asarray(preds)
+            max_pred_idx = np.argmax(preds)
+
+            em_without_context += em[0]
+            em_with_context += em[max_pred_idx]
+
+    em_without_context /= len(groped_data)
+    em_with_context /= len(groped_data)
+
+    return em_without_context, em_with_context
+
+def train_loop(wandb_project_name, model, tokenizer, optimizer, criterion, dataloaders: DataLoadersClass, datasets: DatasetsClass, config: Config):
+    wandb_run = wandb.init(project=wandb_project_name, name=f"{config.model_name}_{config.loss}", config=config)
+    
+    # Main training loop
+    for epoch in range(config.num_epochs):
+        print(f"Epoch {epoch+1}/{config.num_epochs}")
+        train_loss = train(model, tokenizer, optimizer, criterion, dataloaders, datasets, config)
+        val_loss = validate(model, tokenizer, criterion, dataloaders.val, config)
+        em_without_context, em_with_context = evaluate(model, tokenizer, datasets.val, config)
+        print(f'Epoch {epoch+1} completed, Training Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}')
+        print(f'Evaluation: EM Without Context: {em_without_context:.4f}, EM With Context: {em_with_context:.4f}')
+
+        wandb_run.log({
+            'epoch': epoch + 1,
+            'train_loss': train_loss,
+            'val_loss': val_loss,
+            'em_without_context': em_without_context,
+            'em_with_context': em_with_context
+        })
+
+        checkpoint_filename = f'checkpoint_epoch_{epoch+1}.pth'
+
+    save_checkpoint(model, optimizer, epoch, val_loss, filename=checkpoint_filename)
+
+    em_without_context, em_with_context = evaluate(model, tokenizer, datasets.test, config)
+    print(f'Evaluation: EM Without Context: {em_without_context:.4f}, EM With Context: {em_with_context:.4f}')
+    
+    wandb_run.log({
+        "em_without_context": em_without_context,
+        "em_with_context": em_with_context,
+    })
+
+    wandb_run.finish()

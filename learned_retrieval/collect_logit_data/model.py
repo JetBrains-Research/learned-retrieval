@@ -17,22 +17,19 @@ def get_tokenizer(model_config: ModelConfig):
 
     return tokenizer 
 
-def get_ground_truth_logits(model_input, ground_truth, model, tokenizer, model_config: ModelConfig):    
+def get_ground_truth_logits(model_input, ground_truth, model, tokenizer):    
     '''
-
     - log-probs of gt vector
     - log-probs sum of gt
     - perplexity
 
-
     - map to [0, 1]
     - sort list -- take indices divided by length
-
     '''
     model_input += ground_truth
 
-    model_input_encoding = tokenizer(model_input, return_tensors='pt', truncation=True).to(model_config.device)
-    ground_truth_encoding = tokenizer(ground_truth, return_tensors='pt', truncation=True).to(model_config.device)
+    model_input_encoding = tokenizer(model_input, return_tensors='pt', truncation=True).to(model.device)
+    ground_truth_encoding = tokenizer(ground_truth, return_tensors='pt', truncation=True).to(model.device)
     
     with torch.no_grad():
         output = model(**model_input_encoding)
@@ -40,10 +37,10 @@ def get_ground_truth_logits(model_input, ground_truth, model, tokenizer, model_c
     logits = output.logits
 
     ground_truth_tokens = ground_truth_encoding['input_ids'].squeeze(0)
-    ground_truth_logits = logits[0, -ground_truth_tokens.shape[0]:, :]  
+    shifted_logits = logits[0, -ground_truth_tokens.shape[0]:-1, :]  # Shifted by one to the right
 
-    targets = ground_truth_tokens
-    cross_entropy = - torch.nn.functional.cross_entropy(ground_truth_logits, targets, reduction='none')
+    targets = ground_truth_tokens[1:] # first token decodes as <｜begin▁of▁sentence｜>, so I don't take it
+    cross_entropy = - torch.nn.functional.cross_entropy(shifted_logits, targets, reduction='none')
     avg_cross_entropy = cross_entropy.mean()
     perplexity = torch.exp(avg_cross_entropy)
 
