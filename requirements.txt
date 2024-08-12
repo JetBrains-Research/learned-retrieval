@@ -6,4 +6,5 @@ tqdm==4.66.4
 wandb
 scikit-learn
 vllm
+wheel
 # flash-attn==2.5.9.post1
