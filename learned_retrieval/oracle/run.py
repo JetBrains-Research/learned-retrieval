@@ -1,6 +1,4 @@
 '''
-7ontbo2s -- pos_neg_pairs
-c4l60bhb -- logit
 --normalize_strategy mean_std_sigmoid \
 
 Usage: 
@@ -8,10 +6,10 @@ TOKENIZERS_PARALLELISM=true \
 CUDA_VISIBLE_DEVICES=6 \
 python3 run.py  --model_name Salesforce/codet5p-220m \
                 --model_type bi_encoder \
-                --dataset_type logit \
-                --device cuda \
                 --wandb_project_name train-lca \
-                --wandb_run_id c4l60bhb \
+                --dataset_type pos_neg_pairs \
+                --device cuda \
+                --data_path /home/kolomyttseva/Git/learned-retrieval/data/split \
                 --learning_rate 2e-4 \
                 --batch_size 8 \
                 --num_workers 4 \
@@ -20,7 +18,7 @@ python3 run.py  --model_name Salesforce/codet5p-220m \
                 --accumulation_steps 32 \
                 --validation_steps 128 \
                 --loss CrossEntropyLoss \
-                --normalize_strategy mean_std_sigmoid
+                --limit_samples 1000
 '''
 
 
@@ -28,7 +26,7 @@ from pathlib import Path
 from fire import Fire
 import torch
 
-from learned_retrieval.oracle.dataset.utils import load_data, prepare_dataset, prepare_dataloader
+from learned_retrieval.oracle.dataset.utils import prepare_dataset, prepare_dataloader
 from learned_retrieval.oracle.model.utils import get_model, get_tokenizer
 from learned_retrieval.oracle.model.loss import BaseCrossEntropyLoss
 from learned_retrieval.oracle.train.data_classes import Config
@@ -36,21 +34,23 @@ from learned_retrieval.oracle.train.train import train_loop
 
 def run(model_name: str | Path,
         device: str,
+        data_path: str | Path,
         wandb_project_name: str,
-        wandb_run_id: str,
-        learning_rate = 2e-4,
-        batch_size = 32,
-        num_workers = 4,
-        num_epochs = 5,
+        learning_rate: float = 2e-4,
+        batch_size: int = 32,
+        num_workers: int = 4,
+        num_epochs: int = 5,
         max_length: int = 128,
-        normalize_strategy: str | None = None, # ["mean_std", "mean_std_clip", "mean_std_sigmoid", "min_max_clip"]
+        normalize_strategy: str | None = None,  # ["mean_std", "mean_std_clip", "mean_std_sigmoid", "min_max_clip"]
         accumulation_steps: int = 1,
         validation_steps: int = 128,
         limit_samples: int | None = None,
         loss: str = 'CrossEntropyLoss',
-        dataset_type: str = 'em', # ["em", "pos_neg_pairs", "logits"]
-        model_type: str = 'bi_encoder', # ["bi_encoder", "cross_encoder"]
+        dataset_type: str = 'em',  # ["em0to1", "em_per_file", "pos_neg_pairs", "logits"]
+        model_type: str = 'bi_encoder'  # ["bi_encoder", "cross_encoder"]
         ) -> dict:
+
+    data_path = Path(data_path)
 
     config = Config(
         model_name=model_name,
@@ -69,9 +69,13 @@ def run(model_name: str | Path,
         limit_samples=limit_samples
     )
 
-    data = load_data(wandb_run_id, dataset_type, limit_samples)
+    data_split = {
+        'train': data_path / 'train_split.jsonl',
+        'val': data_path / 'val_split.jsonl',
+        'test': data_path / 'test_split.jsonl'
+    }
 
-    datasets = prepare_dataset(data, dataset_type, normalize_strategy=normalize_strategy)
+    datasets = prepare_dataset(data_split, dataset_type, normalize_strategy=normalize_strategy, limit_samples=limit_samples)
     dataloaders = prepare_dataloader(datasets, batch_size, num_workers)
     
     model = get_model(config)

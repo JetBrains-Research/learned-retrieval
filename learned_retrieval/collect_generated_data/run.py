@@ -3,7 +3,7 @@ Usage:
 CUDA_VISIBLE_DEVICES=7 python3 run.py   --model_name deepseek-ai/deepseek-coder-1.3b-base \
                                         --device cuda \
                                         --with_context_files True \
-                                        --config_name medium_context \
+                                        --config_name large_context \
                                         --max_seq_len 16000 \
                                         --max_completion_len 128 \
                                         --wandb_project_name lca-eval \
@@ -35,7 +35,7 @@ from learned_retrieval.collect_generated_data.data_classes import ModelConfig, D
 
 def run(model_name: str | Path,
         device: str | torch.DeviceObjType,
-        config_name: str,
+        config_name: str | None,
         composer: str,
         wandb_project_name: str,
         max_seq_len: int,
@@ -72,7 +72,7 @@ def run(model_name: str | Path,
 
     wb_run = wandb.init(
         project=wandb_project_name,
-        name='_'.join([model_config.model, dataset_config.config_name]) + f'_{dataset_config.with_context_files}',
+        name=f'_{model_config.model}_{dataset_config.config_name}_{dataset_config.with_context_files}',
         config=asdict(model_config) | asdict(dataset_config)
     )
     num_samples = len(completion_dataset)

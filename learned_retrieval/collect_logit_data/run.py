@@ -1,9 +1,9 @@
 '''
 Usage: 
-CUDA_VISIBLE_DEVICES=4 python3 run.py   --model_name deepseek-ai/deepseek-coder-1.3b-base \
+CUDA_VISIBLE_DEVICES=6 python3 run.py   --model_name deepseek-ai/deepseek-coder-1.3b-base \
                                         --device cuda \
                                         --with_context_files True \
-                                        --config_name medium_context \
+                                        --config_name large_context \
                                         --max_seq_len 16000 \
                                         --wandb_project_name lca-collect-logit-data \
                                         --composer brute_force
@@ -41,7 +41,7 @@ def run(model_name: str | Path,
                                device,
                                model_name,
                                max_seq_len,
-                               seed)
+                               seed=seed)
 
     dataset_config = DatasetConfig(config_name,
                                    with_context_files,
@@ -51,7 +51,7 @@ def run(model_name: str | Path,
 
     wb_run = wandb.init(
         project=wandb_project_name,
-        name='_'.join([model_config.model, dataset_config.config_name]) + f'_{dataset_config.with_context_files}',
+        name=f'_{model_config.model}_{dataset_config.config_name}_{dataset_config.with_context_files}',
         config=asdict(model_config) | asdict(dataset_config)
     )
     num_samples = len(completion_dataset)

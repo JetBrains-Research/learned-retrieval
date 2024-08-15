@@ -7,10 +7,12 @@ from learned_retrieval.collect_logit_data.utils import sort_filepathes
 
 class LcaPythonCompletionDataset(Dataset):
     dataset_name = 'JetBrains-Research/lca-project-level-code-completion'
+    # dataset_name = 'JetBrains-Research/lca-codegen-train'
 
     def __init__(self, dataset_config: DatasetConfig) -> None:
         self.dataset_config = dataset_config
         self.ds = load_dataset(self.dataset_name, dataset_config.config_name)['test']
+        # self.ds = load_dataset(self.dataset_name, data_dir='train', data_files=['chunk_006*', 'chunk_0111.parquet'], split='train')
 
         print('Prepare data >>')
         self.prepare_data()
