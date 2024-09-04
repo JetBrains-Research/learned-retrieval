@@ -14,6 +14,13 @@ python3 preprocess_logit_em_data.py --wandb_project_name_logit lca-collect-logit
                                     --wandb_run_id_em 7ontbo2s \
                                     --base_path /home/kolomyttseva/Git/learned-retrieval/jsonl \
                                     --save_file /home/kolomyttseva/Git/learned-retrieval/data/raw/test.jsonl
+
+python3 preprocess_logit_em_data.py --wandb_project_name_logit lca-collect-logit-data \
+                                    --wandb_run_id_logit wyez0ger \
+                                    --wandb_project_name_em lca-eval \
+                                    --wandb_run_id_em yqmklyyb \
+                                    --base_path /home/kolomyttseva/Git/learned-retrieval/jsonl \
+                                    --save_file /home/kolomyttseva/Git/learned-retrieval/data/raw/train.jsonl
 '''
 
 from pathlib import Path
