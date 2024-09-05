@@ -139,7 +139,7 @@ def evaluate(model, tokenizer, dataset, config: Config, split: str | None = None
     return em
 
 def train_loop(wandb_project_name, model, tokenizer, optimizer, criterion, dataloaders: DataLoadersClass, datasets: DatasetsClass, config: Config):
-    wandb_run = wandb.init(project=wandb_project_name, name=f"{config.model_name}_{config.loss}", config=config)
+    wandb_run = wandb.init(project=wandb_project_name, name=f"{config.dataset_type}_{config.loss}", config=config)
     
     # Main training loop
     for epoch in range(config.num_epochs):

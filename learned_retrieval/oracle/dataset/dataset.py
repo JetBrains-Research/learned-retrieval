@@ -190,7 +190,7 @@ class EM0to1CompletionContextDataset(BaseCompletionContextDataset):
 
         ungrouped_data['EM0to1'] = (ungrouped_data['EMs'] > ungrouped_data['EMs_no_context']).apply(lambda x: float(x))
 
-        self.data = ungrouped_data[["completion_content", "completion_line_type", "context_content", "EM0to1", "EM"]]
+        self.data = ungrouped_data[["completion_content", "completion_line_type", "context_content", "EM0to1", "EMs"]]
         self.data.columns = ['completion', 'completion_line_type', 'context', 'EM0to1', 'EM']
 
     def __getitem__(self, idx):
@@ -219,9 +219,9 @@ class EMPerFileCompletionContextDataset(BaseCompletionContextDataset):
         ungrouped_data = pd.merge(data, ungrouped_data, how='inner', on=['completion_filename', 'context_filename'], suffixes=('', '_y'))
         ungrouped_data.drop(ungrouped_data.filter(regex='_y$').columns, axis=1, inplace=True)
         
-        ungrouped_data['EM_per_file'] = (ungrouped_data['EMs'] - ungrouped_data['EMs_no_context']).apply(lambda x: float(x))
+        ungrouped_data['EMs_per_file'] = abs(ungrouped_data['EMs_per_file'] - ungrouped_data['EMs_per_file_no_context']).astype('float32')
 
-        self.data = ungrouped_data[["completion_content", "completion_line_type", "context_content", "EM0to1", "EM"]]
+        self.data = ungrouped_data[["completion_content", "completion_line_type", "context_content", "EMs_per_file", "EMs"]]
         self.data.columns = ['completion', 'completion_line_type', 'context', 'EM_per_file', 'EM']
 
     def __getitem__(self, idx):

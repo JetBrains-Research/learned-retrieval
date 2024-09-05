@@ -7,7 +7,7 @@ CUDA_VISIBLE_DEVICES=6 \
 python3 run.py  --model_name Salesforce/codet5p-220m \
                 --model_type bi_encoder \
                 --wandb_project_name train-lca \
-                --dataset_type pos_neg_pairs \
+                --dataset_type em_per_file \
                 --device cuda \
                 --data_path /home/kolomyttseva/Git/learned-retrieval/data/split \
                 --learning_rate 2e-4 \
@@ -15,10 +15,9 @@ python3 run.py  --model_name Salesforce/codet5p-220m \
                 --num_workers 4 \
                 --num_epochs 2 \
                 --max_length 512 \
-                --accumulation_steps 32 \
-                --validation_steps 128 \
-                --loss CrossEntropyLoss \
-                --limit_samples 1000
+                --accumulation_steps 128 \
+                --validation_steps 1024 \
+                --loss MSELoss
 '''
 
 
@@ -28,7 +27,7 @@ import torch
 
 from learned_retrieval.oracle.dataset.utils import prepare_dataset, prepare_dataloader
 from learned_retrieval.oracle.model.utils import get_model, get_tokenizer
-from learned_retrieval.oracle.model.loss import BaseCrossEntropyLoss
+from learned_retrieval.oracle.model.loss import BaseLoss
 from learned_retrieval.oracle.train.data_classes import Config
 from learned_retrieval.oracle.train.train import train_loop
 
@@ -82,7 +81,7 @@ def run(model_name: str | Path,
     tokenizer = get_tokenizer(model_name)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
-    criterion = BaseCrossEntropyLoss.create_instance(config.dataset_type)
+    criterion = BaseLoss.create_instance(config.loss, config.dataset_type)
 
     train_loop(wandb_project_name, model, tokenizer, optimizer, criterion, dataloaders, datasets, config)
 

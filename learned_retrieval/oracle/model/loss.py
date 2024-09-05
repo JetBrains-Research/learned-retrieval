@@ -6,7 +6,21 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-class BaseMSELoss(nn.Module):
+class BaseLoss(nn.Module):
+    def __init__(self):
+        super(BaseLoss, self).__init__()
+
+    def forward(self, *args, **kwargs):
+        raise NotImplementedError("Subclasses must implement the forward method")
+    
+    @staticmethod
+    def create_instance(loss_type: str, dataset_type: str):
+        if loss_type == 'CrossEntropyLoss':
+            return BaseCrossEntropyLoss().create_instance(dataset_type)
+        elif loss_type == 'MSELoss':
+            return BaseMSELoss().create_instance(dataset_type)
+
+class BaseMSELoss(BaseLoss):
     def __init__(self):
         super(BaseMSELoss, self).__init__()
         self.mse_loss = torch.nn.MSELoss()
@@ -51,7 +65,7 @@ class PairsMSELoss(BaseMSELoss):
 
         return loss    
 
-class BaseCrossEntropyLoss(nn.Module):
+class BaseCrossEntropyLoss(BaseLoss):
     def __init__(self):
         super(BaseCrossEntropyLoss, self).__init__()
         self.bce_loss = torch.nn.BCEWithLogitsLoss()
