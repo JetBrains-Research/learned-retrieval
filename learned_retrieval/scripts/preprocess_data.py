@@ -8,19 +8,19 @@ yqmklyyb -- em
 wyez0ger -- logit
 
 Usage: 
-python3 preprocess_logit_em_data.py --wandb_project_name_logit lca-collect-logit-data \
-                                    --wandb_run_id_logit c4l60bhb \
-                                    --wandb_project_name_em lca-eval \
-                                    --wandb_run_id_em 7ontbo2s \
-                                    --base_path /home/kolomyttseva/Git/learned-retrieval/jsonl \
-                                    --save_file /home/kolomyttseva/Git/learned-retrieval/data/raw/test.jsonl
+python3 preprocess_data.py --wandb_project_name_logit lca-collect-logit-data \
+                           --wandb_run_id_logit c4l60bhb \
+                           --wandb_project_name_em lca-eval \
+                           --wandb_run_id_em 7ontbo2s \
+                           --base_path /home/kolomyttseva/Git/learned-retrieval/jsonl \
+                           --save_file /home/kolomyttseva/Git/learned-retrieval/data/raw/medium_context_data.jsonl
 
-python3 preprocess_logit_em_data.py --wandb_project_name_logit lca-collect-logit-data \
-                                    --wandb_run_id_logit wyez0ger \
-                                    --wandb_project_name_em lca-eval \
-                                    --wandb_run_id_em yqmklyyb \
-                                    --base_path /home/kolomyttseva/Git/learned-retrieval/jsonl \
-                                    --save_file /home/kolomyttseva/Git/learned-retrieval/data/raw/train.jsonl
+python3 preprocess_data.py --wandb_project_name_logit lca-collect-logit-data \
+                           --wandb_run_id_logit wyez0ger \
+                           --wandb_project_name_em lca-eval \
+                           --wandb_run_id_em yqmklyyb \
+                           --base_path /home/kolomyttseva/Git/learned-retrieval/jsonl \
+                           --save_file /home/kolomyttseva/Git/learned-retrieval/data/raw/large_context_data.jsonl
 '''
 
 from pathlib import Path
@@ -28,6 +28,7 @@ from fire import Fire
 import pandas as pd
 import wandb
 import os
+import evaluate
 
 class WandbFileManager:
     def __init__(self, project_name: str, run_id: str, base_path: Path, dataset_type: str):
@@ -98,6 +99,13 @@ def run(wandb_project_name_logit: str,
     em_data = load_data(em_path)
 
     logit_data['EMs'] = em_data['EMs']
+        
+    levenshtein_metric = evaluate.load("levenshtein")
+    chrf_metric = evaluate.load("chrf")
+
+    logit_data['levenshtein'] = em_data.apply(lambda x: levenshtein_metric.compute(predictions=[x['preds']], references=[x['ground_truth']])['score'], axis=1)
+    logit_data['chrf'] = em_data.apply(lambda x: chrf_metric.compute(predictions=[x['preds']], references=[x['ground_truth']])['score'], axis=1)
+
     logit_data['context_content'] = logit_data['context_files'].apply(lambda x: x[0]['content'])
     logit_data['context_filename'] = logit_data['context_files'].apply(lambda x: x[0]['filename'])
 
