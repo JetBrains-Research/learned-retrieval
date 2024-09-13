@@ -48,7 +48,7 @@ def run(model_name: str | Path,
         warmup_steps: int = 500,
         limit_samples: int | None = None,
         loss: str = 'CrossEntropyLoss',
-        dataset_type: str = 'em',  # ["em0to1", "em_per_file", "pos_neg_pairs", "logits"]
+        dataset_type: str = 'em',  # ["em0to1", "em_per_file", "pos_neg_pairs", "logit"]
         model_type: str = 'bi_encoder'  # ["bi_encoder", "cross_encoder"]
         ) -> dict:
 
