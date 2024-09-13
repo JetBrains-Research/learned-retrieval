@@ -15,5 +15,6 @@ class Config:
     max_length: int
     accumulation_steps: int
     validation_steps: int
+    warmup_steps: int
     normalize_strategy: str
     limit_samples: int = None

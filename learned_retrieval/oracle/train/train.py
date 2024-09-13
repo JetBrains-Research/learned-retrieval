@@ -8,11 +8,35 @@ from learned_retrieval.oracle.train.data_classes import Config
 from learned_retrieval.oracle.train.utils import save_checkpoint, calculate_loss
 from learned_retrieval.oracle.dataset.data_classes import DatasetsClass, DataLoadersClass
 
-def train(wandb_run, model, tokenizer, optimizer, criterion, dataloaders: DataLoadersClass, datasets: DatasetsClass, config: Config):
-    model.train()
+def train(wandb_run, model, tokenizer, optimizer, scheduler, criterion, dataloaders: DataLoadersClass, datasets: DatasetsClass, config: Config):
     total_loss = 0
+    optimizer_step = 0
     optimizer.zero_grad()
 
+    val_em_list = []
+
+    # Validation step
+    val_loss = validate(model, tokenizer, criterion, dataloaders.val, config)
+    val_em = evaluate(model, tokenizer, datasets.val, config)
+    val_em_list.append(val_em)
+    print(f"Validation Loss at step: {val_loss:.4f}")
+    print(f"Evaluation: EM Without Context: {val_em['em_without_context']:.4f}, EM With Context: {val_em['em_with_context']:.4f}")
+  
+    # Test step
+    test_em = evaluate(model, tokenizer, datasets.test, config, 'test')
+    print(f"Test Evaluation: EM Without Context: {test_em['test_em_without_context']:.4f}, EM With Context: {test_em['test_em_with_context']:.4f}")
+
+    metrics = {
+        'val_loss': val_loss,
+        'step': optimizer_step,
+        'learning_rate': config.learning_rate
+    }    
+    metrics.update(val_em)
+    metrics.update(test_em)
+
+    wandb_run.log(metrics)
+
+    model.train()
     for batch_idx, batch in enumerate(tqdm(dataloaders.train, desc='Train')):
         loss = calculate_loss(batch, model, tokenizer, criterion, config)
         loss = loss / config.accumulation_steps
@@ -22,36 +46,42 @@ def train(wandb_run, model, tokenizer, optimizer, criterion, dataloaders: DataLo
         if (batch_idx + 1) % config.accumulation_steps == 0:
             optimizer.step()
             optimizer.zero_grad()
+            scheduler.step()
+            optimizer_step += 1
+
+            # Validation&Test step
+            if config.validation_steps and optimizer_step % config.validation_steps == 0:
+                val_loss = validate(model, tokenizer, criterion, dataloaders.val, config)
+                val_em = evaluate(model, tokenizer, datasets.val, config)
+                print(f"Validation Loss at optimizer_step {optimizer_step}: {val_loss:.4f}")
+                print(f"Evaluation: EM Without Context: {val_em['em_without_context']:.4f}, EM With Context: {val_em['em_with_context']:.4f}")
+
+                test_em = evaluate(model, tokenizer, datasets.test, config, 'test')
+                print(f"Test Evaluation: EM Without Context: {test_em['test_em_without_context']:.4f}, EM With Context: {test_em['test_em_with_context']:.4f}")
+                
+                current_lr = scheduler.get_last_lr()[0]
+                metrics = {
+                    'val_loss': val_loss,
+                    'step': optimizer_step,
+                    'learning_rate': current_lr
+                }                
+                metrics.update(val_em)
+                metrics.update(test_em)
+                wandb_run.log(metrics)
+
+                if val_em_list and val_em['em_with_context'] > val_em_list[-1]['em_with_context']:
+                    checkpoint_filename = f'best_checkpoint.pth'
+                    save_checkpoint(model, optimizer, optimizer_step, val_loss, filename=checkpoint_filename)
+
+                val_em_list.append(val_em)
 
         total_loss += loss.item() * config.accumulation_steps
-
-        # Validation step
-        if config.validation_steps and (batch_idx + 1) % config.validation_steps == 0:
-            val_loss = validate(model, tokenizer, criterion, dataloaders.val, config)
-            em = evaluate(model, tokenizer, datasets.val, config)
-            print(f"Validation Loss at step {batch_idx + 1}: {val_loss:.4f}")
-            print(f"Evaluation: EM Without Context: {em['em_without_context']:.4f}, EM With Context: {em['em_with_context']:.4f}")
-            wandb_run.log({
-                'val_loss': val_loss,
-                'step': batch_idx + 1
-            })
-            wandb_run.log(em)
-
-            checkpoint_filename = f'checkpoint.pth'
-            save_checkpoint(model, optimizer, batch_idx + 1, val_loss, filename=checkpoint_filename)
-
-        # # Test step
-        # if config.validation_steps and (batch_idx + 1) % (config.validation_steps * 8) == 0:
-        #     em = evaluate(model, tokenizer, datasets.test, config, 'test')
-        #     print(f"Evaluation: EM Without Context: {em['test_em_without_context']:.4f}, EM With Context: {em['test_em_with_context']:.4f}")
-        #     wandb_run.log({
-        #         'step': batch_idx + 1
-        #     })
-        #     wandb_run.log(em)
 
     if (batch_idx + 1) % config.accumulation_steps != 0:
         optimizer.step()
         optimizer.zero_grad()
+        scheduler.step()
+        optimizer_step += 1
 
     average_loss = total_loss / len(dataloaders.train)
     return average_loss
@@ -138,28 +168,19 @@ def evaluate(model, tokenizer, dataset, config: Config, split: str | None = None
     print(em)
     return em
 
-def train_loop(wandb_project_name, model, tokenizer, optimizer, criterion, dataloaders: DataLoadersClass, datasets: DatasetsClass, config: Config):
+def train_loop(wandb_project_name, model, tokenizer, optimizer, scheduler, criterion, dataloaders: DataLoadersClass, datasets: DatasetsClass, config: Config):
     wandb_run = wandb.init(project=wandb_project_name, name=f"{config.dataset_type}_{config.loss}", config=config)
     
     # Main training loop
     for epoch in range(config.num_epochs):
         print(f"Epoch {epoch+1}/{config.num_epochs}")
-        train_loss = train(wandb_run, model, tokenizer, optimizer, criterion, dataloaders, datasets, config)
-        val_loss = validate(model, tokenizer, criterion, dataloaders.val, config)
-        em = evaluate(model, tokenizer, datasets.val, config)
-        print(f'Epoch {epoch+1} completed, Training Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}')
-        print(f"Evaluation: EM Without Context: {em['em_without_context']:.4f}, EM With Context: {em['em_with_context']:.4f}")
+        train_loss = train(wandb_run, model, tokenizer, optimizer, scheduler, criterion, dataloaders, datasets, config)
+        print(f'Epoch {epoch+1} completed, Training Loss: {train_loss:.4f}')
 
         wandb_run.log({
             'epoch': epoch + 1,
             'train_loss': train_loss,
-            'val_loss': val_loss,
         })
-        
-        wandb_run.log(em)
-        checkpoint_filename = f'checkpoint_epoch_{epoch+1}.pth'
-
-    save_checkpoint(model, optimizer, epoch, val_loss, filename=checkpoint_filename)
 
     em = evaluate(model, tokenizer, datasets.test, config, 'test')
     print(f"Evaluation: EM Without Context: {em['test_em_without_context']:.4f}, EM With Context: {em['test_em_with_context']:.4f}")
