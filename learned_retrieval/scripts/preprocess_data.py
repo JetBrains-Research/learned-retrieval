@@ -29,6 +29,7 @@ import pandas as pd
 import wandb
 import os
 import evaluate
+import Levenshtein
 
 class WandbFileManager:
     def __init__(self, project_name: str, run_id: str, base_path: Path, dataset_type: str):
@@ -99,11 +100,11 @@ def run(wandb_project_name_logit: str,
     em_data = load_data(em_path)
 
     logit_data['EMs'] = em_data['EMs']
-        
-    levenshtein_metric = evaluate.load("levenshtein")
+    logit_data['preds'] = em_data['preds']
+  
     chrf_metric = evaluate.load("chrf")
 
-    logit_data['levenshtein'] = em_data.apply(lambda x: levenshtein_metric.compute(predictions=[x['preds']], references=[x['ground_truth']])['score'], axis=1)
+    logit_data['levenshtein'] = em_data.apply(lambda x: Levenshtein.distance(x['preds'], x['ground_truth']), axis=1)
     logit_data['chrf'] = em_data.apply(lambda x: chrf_metric.compute(predictions=[x['preds']], references=[x['ground_truth']])['score'], axis=1)
 
     logit_data['context_content'] = logit_data['context_files'].apply(lambda x: x[0]['content'])

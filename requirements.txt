@@ -7,4 +7,7 @@ wandb
 scikit-learn
 vllm
 wheel
+evaluate
+sacrebleu
+levenshtein
 # flash-attn==2.5.9.post1
