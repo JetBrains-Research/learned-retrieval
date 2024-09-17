@@ -26,11 +26,7 @@ def train(wandb_run, model, tokenizer, optimizer, scheduler, criterion, dataload
     test_em = evaluate(model, tokenizer, datasets.test, config, 'test')
     print(f"Test Evaluation: EM Without Context: {test_em['test_em_without_context']:.4f}, EM With Context: {test_em['test_em_with_context']:.4f}")
 
-    metrics = {
-        'val_loss': val_loss,
-        'step': optimizer_step,
-        'learning_rate': config.learning_rate
-    }    
+    metrics = {'val_loss': val_loss}    
     metrics.update(val_em)
     metrics.update(test_em)
 
@@ -48,6 +44,9 @@ def train(wandb_run, model, tokenizer, optimizer, scheduler, criterion, dataload
             optimizer.zero_grad()
             scheduler.step()
             optimizer_step += 1
+            current_lr = scheduler.get_last_lr()[0]
+            metrics = {'learning_rate': current_lr}                
+            wandb_run.log(metrics)
 
             # Validation&Test step
             if config.validation_steps and optimizer_step % config.validation_steps == 0:
@@ -59,12 +58,7 @@ def train(wandb_run, model, tokenizer, optimizer, scheduler, criterion, dataload
                 test_em = evaluate(model, tokenizer, datasets.test, config, 'test')
                 print(f"Test Evaluation: EM Without Context: {test_em['test_em_without_context']:.4f}, EM With Context: {test_em['test_em_with_context']:.4f}")
                 
-                current_lr = scheduler.get_last_lr()[0]
-                metrics = {
-                    'val_loss': val_loss,
-                    'step': optimizer_step,
-                    'learning_rate': current_lr
-                }                
+                metrics = {'val_loss': val_loss}                
                 metrics.update(val_em)
                 metrics.update(test_em)
                 wandb_run.log(metrics)
@@ -107,37 +101,48 @@ def evaluate(model, tokenizer, dataset, config: Config, split: str | None = None
     grouped_data = grouped_data.agg(list)
 
     results = []
-    
+
     with torch.no_grad():
         for _, item in tqdm(grouped_data.iterrows(), total=len(grouped_data), desc='Evaluate'):
             completion = item['completion']
             contexts = item['context']
             em = item['EM']
 
-            preds = []
+            # Tokenize the completion for all contexts at once (repeat completion for each context)
+            completion_encoding = tokenizer(
+                [completion] * len(contexts),  # Duplicate the completion for each context
+                return_tensors='pt', 
+                max_length=config.max_length, 
+                padding='max_length', 
+                truncation=True
+            )
+            completion_encoding = {k: v.to(config.device) for k, v in completion_encoding.items()}
 
-            for context in contexts:
-                # Tokenize completion and context
-                completion_encoding = tokenizer(completion, return_tensors='pt', max_length=config.max_length, padding='max_length', truncation=True)
-                completion_encoding = {k: v.to(config.device) for k, v in completion_encoding.items()}
+            # Tokenize all contexts at once
+            context_encoding = tokenizer(
+                contexts, 
+                return_tensors='pt', 
+                max_length=config.max_length, 
+                padding='max_length', 
+                truncation=True
+            )
+            context_encoding = {k: v.to(config.device) for k, v in context_encoding.items()}
 
-                context_encoding = tokenizer(context, return_tensors='pt', max_length=config.max_length, padding='max_length', truncation=True)
-                context_encoding = {k: v.to(config.device) for k, v in context_encoding.items()}
+            # Forward pass through model
+            completion_embeds, context_embeds = model(completion_encoding, context_encoding)
+            context_embeds = context_embeds[0]
 
-                # Forward pass through model
-                completion_embeds, context_embeds = model(completion_encoding, context_encoding)
-                context_embeds = context_embeds[0]
+            # Calculate similarity (logits) and apply sigmoid
+            hidden_size = completion_embeds.shape[1]
+            logits = torch.einsum('bh, bh -> b', completion_embeds, context_embeds) / np.sqrt(hidden_size)
+            preds = torch.sigmoid(logits)
 
-                # Calculate similarity (logits) and apply sigmoid
-                hidden_size = completion_embeds.shape[1]
-                logit = torch.einsum('bh, bh -> b', completion_embeds, context_embeds) / np.sqrt(hidden_size)
-                pred = torch.sigmoid(logit)
+            # Convert predictions to numpy array
+            preds = preds.cpu().numpy()
 
-                preds.append(pred.item())
-
-            preds = np.asarray(preds)
+            # Find the context with the maximum prediction
             max_pred_idx = np.argmax(preds)
-
+    
             result = {
                 'completion': completion,
                 'completion_line_type': item['completion_line_type'],
