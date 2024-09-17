@@ -16,7 +16,7 @@ python3 run.py  --model_name Salesforce/codet5p-220m \
                 --num_epochs 2 \
                 --max_length 512 \
                 --accumulation_steps 32 \
-                --validation_steps 512 \
+                --validation_steps 32 \
                 --warmup_steps 4096 \
                 --normalize_strategy mean_std_sigmoid \
                 --loss CrossEntropyLoss
@@ -80,7 +80,7 @@ def run(model_name: str | Path,
     }
 
     datasets = prepare_dataset(data_split, dataset_type, normalize_strategy=normalize_strategy, limit_samples=limit_samples)
-    dataloaders = prepare_dataloader(datasets, batch_size, num_workers)
+    dataloaders = prepare_dataloader(datasets, batch_size, batch_size, num_workers)
     
     model = get_model(config)
     tokenizer = get_tokenizer(model_name)

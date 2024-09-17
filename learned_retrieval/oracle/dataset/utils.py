@@ -73,9 +73,9 @@ def normalize_datasets(datasets: DatasetsClass, normalize_strategy):
         min_, max_ = datasets.train.min_max_norm()
         datasets.val.min_max_norm(do_test=True, min_=min_, max_=max_, do_clip=True)
 
-def prepare_dataloader(datasets: DatasetsClass, batch_size, num_workers):
-    train_loader = DataLoader(datasets.train, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    val_loader = DataLoader(datasets.val, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+def prepare_dataloader(datasets: DatasetsClass, train_batch_size, test_batch_size, num_workers):
+    train_loader = DataLoader(datasets.train, batch_size=train_batch_size, shuffle=True, num_workers=num_workers)
+    val_loader = DataLoader(datasets.val, batch_size=test_batch_size, shuffle=True, num_workers=num_workers)
     # test_loader = DataLoader(datasets.test, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
 
     return DataLoadersClass(train_loader, val_loader)#, test_loader)
