@@ -38,11 +38,13 @@ class LcaPythonCompletionDataset(Dataset):
 
                         gt = completion_content[line]
 
-                        model_input = completion_filename + self.dataset_config.sep_symbol + completion
+                        model_input = self._merge_context([(completion_filename, completion)])
+                        # model_input = self._prepare_model_input(completion_filename, completion)
 
                         context_files = [{'filename': '', 'content': ''}]
 
                         self.data.append({
+                            # 'repo': s['repo'],
                             'completion_content': completion,
                             'ground_truth': gt,
                             'completion_filename': completion_filename,
@@ -53,53 +55,87 @@ class LcaPythonCompletionDataset(Dataset):
                         })
 
                         if self.dataset_config.with_context_files:
-                            for context_filename, context_content in filtered_context:
-                                model_input = self._prepare_model_input(completion_filename, 
-                                                                        completion, 
-                                                                        context_filename, 
-                                                                        context_content)
+                            if self.dataset_config.num_of_contexts is None:
+                                completion_context = filtered_context + [(completion_filename, completion)]
+                                model_input = self._merge_context(completion_context)
 
-                                context_files = [{'filename': context_filename, 'content': context_content}]
+                                context_files = [{'filename': filename, 'content': content} for filename, content in filtered_context]
 
                                 self.data.append({
-                                    # 'repo': s['repo'],
-                                    'completion_content': completion,
-                                    'ground_truth': gt,
-                                    'completion_filename': completion_filename,
-                                    'completion_line': line,
-                                    'completion_line_type': line_type,
-                                    'context_files': context_files,
-                                    'model_inputs': model_input,
-                                })
+                                        # 'repo': s['repo'],
+                                        'completion_content': completion,
+                                        'ground_truth': gt,
+                                        'completion_filename': completion_filename,
+                                        'completion_line': line,
+                                        'completion_line_type': line_type,
+                                        'context_files': context_files,
+                                        'model_inputs': model_input,
+                                    })
+                            elif self.dataset_config.num_of_contexts == 1:
+                                for context_filename, context_content in filtered_context:
+                                    model_input = self._prepare_model_input(completion_filename, 
+                                                                            completion, 
+                                                                            context_filename, 
+                                                                            context_content)
+
+                                    context_files = [{'filename': context_filename, 'content': context_content}]
+
+                                    self.data.append({
+                                        # 'repo': s['repo'],
+                                        'completion_content': completion,
+                                        'ground_truth': gt,
+                                        'completion_filename': completion_filename,
+                                        'completion_line': line,
+                                        'completion_line_type': line_type,
+                                        'context_files': context_files,
+                                        'model_inputs': model_input,
+                                    })
 
     def _filter_context(self, completion_file, repo_snapshot):
         filtered_context = []
 
-        if self.dataset_config.composer == "brute_force":
-            for context_filename, context_content in zip(repo_snapshot['filename'], repo_snapshot['content']):
-                if self.dataset_config.context_file_ext is None or context_filename.lower().endswith(self.dataset_config.context_file_ext):    
-                    filtered_context.append((context_filename, context_content))
+        for context_filename, context_content in zip(repo_snapshot['filename'], repo_snapshot['content']):
+            if self.dataset_config.context_file_ext is None or context_filename.lower().endswith(self.dataset_config.context_file_ext):    
+                filtered_context.append((context_filename, context_content))
+            
         elif self.dataset_config.composer == "path_distance":
-            sorted_pathes = sort_filepathes(completion_file['filename'], repo_snapshot)
-            filtered_context.append(sorted_pathes[0])
+            sorted_pathes = sort_filepathes(completion_file, filtered_context)
+            if self.dataset_config.num_of_contexts is None:
+                filtered_context = sorted_pathes[::-1] # decreasing dist
+            elif self.dataset_config.num_of_contexts == 1:
+                filtered_context = [sorted_pathes[0]]
 
         return filtered_context
 
-    def _prepare_model_input(self, completion_filename, completion, context_filename, context_content):
+    def _prepare_model_input(self, completion_filename, completion, context_filename=None, context_content=None):
         if self.dataset_config.do_filename_comment:
             context_filename = f"# {context_filename}"
             completion_filename = f"# {completion_filename}"
 
         if self.dataset_config.do_body_comment:
-            context_filename = context_filename.split('\n')
-            context_filename = "# " + '\n# '.join(context_filename) + '\n'
+            context_content = context_content.split('\n')
+            completion = "# " + '\n# '.join(completion) + '\n'
 
-        context_model_input = context_filename + self.dataset_config.sep_symbol + context_content
-        completion_model_input = completion_filename + self.dataset_config.sep_symbol + completion
+        if context_filename is not None and context_content is not None:
+            context_model_input = context_filename + self.dataset_config.sep_symbol + context_content
+            completion_model_input = completion_filename + self.dataset_config.sep_symbol + completion
 
-        model_input = context_model_input + self.dataset_config.sep_symbol + completion_model_input
+            model_input = context_model_input + self.dataset_config.sep_symbol + completion_model_input
+        else:
+            model_input = completion_filename + self.dataset_config.sep_symbol + completion
 
         return model_input
+
+    def _merge_context(self, contexts) -> str:
+        context_lines = []
+        for context_filename, context_content in contexts:
+            if (context_content is None) or (context_content.strip() == ""):
+                context_content = "# empty file"
+            context_lines.extend(
+                [context_filename, "", context_content, ""]
+            )  # empty string is for additional new-line
+
+        return "\n".join(context_lines)
 
     def __len__(self) -> int:
 

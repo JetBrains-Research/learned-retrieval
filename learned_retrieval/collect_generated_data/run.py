@@ -4,8 +4,8 @@ CUDA_VISIBLE_DEVICES=7 python3 run.py   --model_name deepseek-ai/deepseek-coder-
                                         --device cuda \
                                         --with_context_files True \
                                         --config_name large_context \
-                                        --max_seq_len 16000 \
-                                        --max_completion_len 128 \
+                                        --max_seq_len 16256 \
+                                        --max_completion_len 100 \
                                         --wandb_project_name lca-eval \
                                         --composer brute_force \
                                         --vllm True
@@ -82,19 +82,31 @@ def run(model_name: str | Path,
     model = get_model(model_config, vllm)
 
     data = []
+    model_inputs = [completion_dataset[n]['model_inputs'] for n in range(i, min(i + batch_size, num_samples))]
 
-    for n in tqdm(range(num_samples)):
-        s = completion_dataset[n]
+    predictions = generate_completions_batch(s['model_inputs'],
+                                             model,
+                                             tokenizer,
+                                             model_config,
+                                             vllm)
 
-        pred = generate_completion(s['model_inputs'],
-                                   model,
-                                   tokenizer,
-                                   model_config,
-                                   vllm)
-
+    for pred in tqdm(predictions):
         s['preds'] = pred
         s['EMs'] = int(pred == s['ground_truth'])
         data.append(s)
+
+    # for n in tqdm(range(num_samples)):
+    #     s = completion_dataset[n]
+
+    #     pred = generate_completion(s['model_inputs'],
+    #                                model,
+    #                                tokenizer,
+    #                                model_config,
+    #                                vllm)
+
+    #     s['preds'] = pred
+    #     s['EMs'] = int(pred == s['ground_truth'])
+    #     data.append(s)
 
     em = exact_match(data)
 

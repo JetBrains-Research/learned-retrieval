@@ -21,6 +21,7 @@ class ModelConfig:
 class DatasetConfig:
     config_name: str
     with_context_files: bool
+    num_of_contexts: int = field(default=None)
     sep_symbol: str = field(default=None)
     do_filename_comment: bool = field(default=None)
     do_body_comment: bool = field(default=None)
@@ -32,7 +33,8 @@ class DatasetConfig:
 
     def __post_init__(self):
         self.line_types = ["inproject", "infile"]
-        self.sep_symbol = '\n[SEP]\n'
+        # self.num_of_contexts = 1
+        # self.sep_symbol = '\n[SEP]\n'
 
         if self.with_context_files:
             self.do_filename_comment = False
@@ -56,12 +58,15 @@ class DatasetConfig:
             elif self.sep_symbol.strip()[1] == "M":
                 self.context_preprocessing += "-SM"
 
-            self.context_file_ext = (".py")#, ".txt", ".md")
+            self.context_file_ext = (".py", ".txt", ".md", ".rst")
 
         if not self.with_context_files:
             self.context_selection = "NoC"
         else:
             if self.composer == 'path_distance':
+                if self.num_of_contexts is None:
+                    self.context_selection = "PathDist"
+                else:
                     self.context_selection = "PathDist-1"
             elif self.composer == 'brute_force':
                 if (self.line_types is None or self.context_file_ext is None):
