@@ -3,7 +3,7 @@
 
 Usage: 
 TOKENIZERS_PARALLELISM=true \
-CUDA_VISIBLE_DEVICES=5 \
+CUDA_VISIBLE_DEVICES=4 \
 python3 run.py  --model_name Salesforce/codet5p-220m \
                 --model_type bi_encoder \
                 --wandb_project_name train-lca \
@@ -15,9 +15,9 @@ python3 run.py  --model_name Salesforce/codet5p-220m \
                 --num_workers 4 \
                 --num_epochs 2 \
                 --max_length 512 \
-                --accumulation_steps 32 \
-                --validation_steps 32 \
-                --warmup_steps 4096 \
+                --accumulation_steps 2 \
+                --validation_steps 128 \
+                --warmup_steps 512 \
                 --normalize_strategy mean_std_sigmoid \
                 --loss CrossEntropyLoss
 '''
@@ -97,7 +97,8 @@ def run(model_name: str | Path,
     scheduler = get_cosine_schedule_with_warmup(
         optimizer,
         num_warmup_steps=warmup_steps,
-        num_training_steps=total_steps
+        num_training_steps=total_steps,
+        num_cycles=3
     )
 
     train_loop(wandb_project_name, model, tokenizer, optimizer, scheduler, criterion, dataloaders, datasets, config)
