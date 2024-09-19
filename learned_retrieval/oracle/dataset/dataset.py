@@ -83,6 +83,7 @@ class LogitCompletionContextDataset(BaseCompletionContextDataset):
 class LevenshteinCompletionContextDataset(BaseCompletionContextDataset):
     def initialize_data(self, input_data: pd.DataFrame):
         self.data = input_data[['completion_content', 'completion_line_type', 'context_content', 'levenshtein', 'EMs']]
+        self.data['levenshtein'] = self.data['levenshtein'].astype('float32')
         self.data.columns = ['completion', 'completion_line_type', 'context', 'levenshtein', 'EM']
 
     def __getitem__(self, idx):

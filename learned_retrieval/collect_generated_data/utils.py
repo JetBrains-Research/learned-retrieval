@@ -69,13 +69,13 @@ def path_distance(path_from, path_to):
         # return len(divided_path_from) - common_len - 1
     return (len(divided_path_from) - common_len - 1) + (len(divided_path_to) - common_len - 1)
 
-def sort_filepathes(path_from, repo_snapshot):
+def sort_filepathes(path_from, contexts):
     # sorts with increase of distances
-    max_len = max([len(os.path.normpath(path).split(os.path.sep)) for path in repo_snapshot['filename']])
+    max_len = max([len(os.path.normpath(path).split(os.path.sep)) for path, _ in contexts])
     max_len += len(os.path.normpath(path_from).split(os.path.sep))
     paths_by_distance = [list() for _ in range(max_len)]
 
-    for path_to, context_content in zip(repo_snapshot['filename'], repo_snapshot['content']):
+    for path_to, context_content in contexts:
         dist = path_distance(path_from, path_to)
         paths_by_distance[dist].append((path_to, context_content))
-        return [(path_to, context_content) for path_group in paths_by_distance for (path_to, context_content) in path_group]
+    return [(path_to, context_content) for path_group in paths_by_distance for (path_to, context_content) in path_group]

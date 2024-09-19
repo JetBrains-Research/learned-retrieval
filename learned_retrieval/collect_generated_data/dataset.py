@@ -24,7 +24,7 @@ class LcaPythonCompletionDataset(Dataset):
             completion_filename = s['completion_file']['filename']
             completion_content = s['completion_file']['content'].split('\n')
 
-            filtered_context = self._filter_context(s['completion_file'], s['repo_snapshot'])
+            filtered_context = self._filter_context(completion_filename, s['repo_snapshot'])
 
             for line_type in s['completion_lines']:
                 if self.dataset_config.line_types is None or line_type in self.dataset_config.line_types:
@@ -91,15 +91,15 @@ class LcaPythonCompletionDataset(Dataset):
                                         'model_inputs': model_input,
                                     })
 
-    def _filter_context(self, completion_file, repo_snapshot):
+    def _filter_context(self, completion_filename, repo_snapshot):
         filtered_context = []
 
         for context_filename, context_content in zip(repo_snapshot['filename'], repo_snapshot['content']):
             if self.dataset_config.context_file_ext is None or context_filename.lower().endswith(self.dataset_config.context_file_ext):    
                 filtered_context.append((context_filename, context_content))
             
-        elif self.dataset_config.composer == "path_distance":
-            sorted_pathes = sort_filepathes(completion_file, filtered_context)
+        if self.dataset_config.composer == "path_distance":
+            sorted_pathes = sort_filepathes(completion_filename, filtered_context)
             if self.dataset_config.num_of_contexts is None:
                 filtered_context = sorted_pathes[::-1] # decreasing dist
             elif self.dataset_config.num_of_contexts == 1:

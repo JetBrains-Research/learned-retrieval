@@ -1,13 +1,13 @@
 '''
 Usage: 
-CUDA_VISIBLE_DEVICES=7 python3 run.py   --model_name deepseek-ai/deepseek-coder-1.3b-base \
+CUDA_VISIBLE_DEVICES=2 python3 run.py   --model_name deepseek-ai/deepseek-coder-1.3b-base \
                                         --device cuda \
                                         --with_context_files True \
-                                        --config_name large_context \
+                                        --config_name medium_context \
                                         --max_seq_len 16256 \
                                         --max_completion_len 100 \
                                         --wandb_project_name lca-eval \
-                                        --composer brute_force \
+                                        --composer path_distance \
                                         --vllm True
 
 --limit-samples is to score on a small portion of the entire datset, scoring
@@ -28,7 +28,7 @@ import torch
 from transformers.generation import StoppingCriteriaList
 from transformers import AutoTokenizer
 
-from learned_retrieval.collect_generated_data.model import get_model, get_tokenizer, generate_completion
+from learned_retrieval.collect_generated_data.model import get_model, get_tokenizer, generate_completions_batch, generate_completion
 from learned_retrieval.collect_generated_data.utils import set_seed, get_results_path, exact_match, StopOnNewLine
 from learned_retrieval.collect_generated_data.dataset import LcaPythonCompletionDataset
 from learned_retrieval.collect_generated_data.data_classes import ModelConfig, DatasetConfig
@@ -82,31 +82,32 @@ def run(model_name: str | Path,
     model = get_model(model_config, vllm)
 
     data = []
-    model_inputs = [completion_dataset[n]['model_inputs'] for n in range(i, min(i + batch_size, num_samples))]
+    # model_inputs = [completion_dataset[n]['model_inputs'] for n in range(num_samples)]
 
-    predictions = generate_completions_batch(s['model_inputs'],
-                                             model,
-                                             tokenizer,
-                                             model_config,
-                                             vllm)
+    # predictions = generate_completions_batch(model_inputs,
+    #                                          model,
+    #                                          tokenizer,
+    #                                          model_config,
+    #                                          vllm)
 
-    for pred in tqdm(predictions):
-        s['preds'] = pred
-        s['EMs'] = int(pred == s['ground_truth'])
-        data.append(s)
-
-    # for n in tqdm(range(num_samples)):
-    #     s = completion_dataset[n]
-
-    #     pred = generate_completion(s['model_inputs'],
-    #                                model,
-    #                                tokenizer,
-    #                                model_config,
-    #                                vllm)
-
+    # for i, pred in tqdm(enumerate(predictions)):
+    #     s = completion_dataset[i]
     #     s['preds'] = pred
     #     s['EMs'] = int(pred == s['ground_truth'])
     #     data.append(s)
+
+    for n in tqdm(range(num_samples)):
+        s = completion_dataset[n]
+
+        pred = generate_completion(s['model_inputs'],
+                                   model,
+                                   tokenizer,
+                                   model_config,
+                                   vllm)
+
+        s['preds'] = pred
+        s['EMs'] = int(pred == s['ground_truth'])
+        data.append(s)
 
     em = exact_match(data)
 

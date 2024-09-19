@@ -33,7 +33,8 @@ class DatasetConfig:
 
     def __post_init__(self):
         self.line_types = ["inproject", "infile"]
-        # self.num_of_contexts = 1
+        self.num_of_contexts = None
+        self.sep_symbol = ""
         # self.sep_symbol = '\n[SEP]\n'
 
         if self.with_context_files:
