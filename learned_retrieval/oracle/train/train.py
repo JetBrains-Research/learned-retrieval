@@ -16,17 +16,17 @@ def train(wandb_run, model, tokenizer, optimizer, scheduler, criterion, dataload
     val_em_list = []
 
     # Validation step
-    val_loss = validate(model, tokenizer, criterion, dataloaders.val, config)
+    # val_loss = validate(model, tokenizer, criterion, dataloaders.val, config)
     val_em = evaluate(model, tokenizer, datasets.val, config)
     val_em_list.append(val_em)
-    print(f"Validation Loss at step: {val_loss:.4f}")
+    # print(f"Validation Loss at step: {val_loss:.4f}")
     print(f"Evaluation: EM Without Context: {val_em['em_without_context']:.4f}, EM With Context: {val_em['em_with_context']:.4f}")
   
     # Test step
     test_em = evaluate(model, tokenizer, datasets.test, config, 'test')
     print(f"Test Evaluation: EM Without Context: {test_em['test_em_without_context']:.4f}, EM With Context: {test_em['test_em_with_context']:.4f}")
 
-    metrics = {'val_loss': val_loss}    
+    # metrics = {'val_loss': val_loss}    
     metrics.update(val_em)
     metrics.update(test_em)
 
