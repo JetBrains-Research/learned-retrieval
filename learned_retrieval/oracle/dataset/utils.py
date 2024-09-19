@@ -16,28 +16,6 @@ def load_data(path, limit_samples=None):
     
     return data
 
-# def prepare_dataset(data, dataset_type, normalize_strategy=None):
-#     '''
-#     normalize_strategy:
-#         ["mean_std", "mean_std_clip", "mean_std_sigmoid", "min_max_clip"]
-#     '''
-#     groped_data = data.groupby(["completion_content"], as_index=False)
-#     groped_data = groped_data.agg(list)
-
-#     train_data, test_data = train_test_split(groped_data, test_size=0.1, random_state=1, shuffle=True)
-#     train_data, val_data = train_test_split(train_data, test_size=0.2, random_state=1, shuffle=True)
-
-#     train_dataset = BaseCompletionContextDataset.create_instance(dataset_type, train_data)
-#     val_dataset = BaseCompletionContextDataset.create_instance(dataset_type, val_data)
-#     test_dataset = BaseCompletionContextDataset.create_instance(dataset_type, test_data)
-
-#     datasets = DatasetsClass(train_dataset, val_dataset, test_dataset)
-
-#     if normalize_strategy is not None:
-#         normalize_datasets(datasets, normalize_strategy)
-        
-#     return datasets
-
 def prepare_dataset(data_split: dict, dataset_type: str, normalize_strategy: str | None = None, limit_samples: int = None, ):
     '''
     normalize_strategy:
