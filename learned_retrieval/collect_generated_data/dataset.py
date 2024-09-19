@@ -135,7 +135,9 @@ class LcaPythonCompletionDataset(Dataset):
                 [context_filename, "", context_content, ""]
             )  # empty string is for additional new-line
 
-        return "\n".join(context_lines)
+        context = "\n".join(context_lines)
+        context = context.strip() + "\n"
+        return context
 
     def __len__(self) -> int:
 

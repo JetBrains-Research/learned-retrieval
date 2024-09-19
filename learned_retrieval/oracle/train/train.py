@@ -27,6 +27,7 @@ def train(wandb_run, model, tokenizer, optimizer, scheduler, criterion, dataload
     print(f"Test Evaluation: EM Without Context: {test_em['test_em_without_context']:.4f}, EM With Context: {test_em['test_em_with_context']:.4f}")
 
     # metrics = {'val_loss': val_loss}    
+    metrics = dict()
     metrics.update(val_em)
     metrics.update(test_em)
 

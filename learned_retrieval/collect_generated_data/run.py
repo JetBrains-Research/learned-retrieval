@@ -1,10 +1,10 @@
 '''
 Usage: 
-CUDA_VISIBLE_DEVICES=2 python3 run.py   --model_name deepseek-ai/deepseek-coder-1.3b-base \
+CUDA_VISIBLE_DEVICES=6 python3 run.py   --model_name deepseek-ai/deepseek-coder-1.3b-base \
                                         --device cuda \
                                         --with_context_files True \
                                         --config_name medium_context \
-                                        --max_seq_len 16256 \
+                                        --max_seq_len 16356 \
                                         --max_completion_len 100 \
                                         --wandb_project_name lca-eval \
                                         --composer path_distance \
