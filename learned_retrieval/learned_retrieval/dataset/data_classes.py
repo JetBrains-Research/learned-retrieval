@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader
 from dataclasses import dataclass
 
-from learned_retrieval.oracle.dataset.dataset import BaseCompletionContextDataset
+from learned_retrieval.learned_retrieval.dataset.dataset import BaseCompletionContextDataset
 
 @dataclass
 class DatasetsClass:

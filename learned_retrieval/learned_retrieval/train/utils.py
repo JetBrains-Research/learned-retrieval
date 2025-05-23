@@ -1,6 +1,6 @@
 import wandb
 import torch
-from learned_retrieval.oracle.train.data_classes import Config
+from learned_retrieval.learned_retrieval.train.data_classes import Config
 
 def save_checkpoint(model, optimizer, epoch, loss, filename='checkpoint.pth'):
     checkpoint = {

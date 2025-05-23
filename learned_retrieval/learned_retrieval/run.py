@@ -28,11 +28,11 @@ from fire import Fire
 import torch
 from transformers import get_cosine_schedule_with_warmup
 
-from learned_retrieval.oracle.dataset.utils import prepare_dataset, prepare_dataloader
-from learned_retrieval.oracle.model.utils import get_model, get_tokenizer
-from learned_retrieval.oracle.model.loss import BaseLoss
-from learned_retrieval.oracle.train.data_classes import Config
-from learned_retrieval.oracle.train.train import train_loop
+from learned_retrieval.learned_retrieval.dataset.utils import prepare_dataset, prepare_dataloader
+from learned_retrieval.learned_retrieval.model.utils import get_model, get_tokenizer
+from learned_retrieval.learned_retrieval.model.loss import BaseLoss
+from learned_retrieval.learned_retrieval.train.data_classes import Config
+from learned_retrieval.learned_retrieval.train.train import train_loop
 
 def run(model_name: str | Path,
         device: str,

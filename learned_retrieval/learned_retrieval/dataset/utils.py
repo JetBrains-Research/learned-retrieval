@@ -3,8 +3,8 @@ import os
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 
-from learned_retrieval.oracle.dataset.dataset import BaseCompletionContextDataset
-from learned_retrieval.oracle.dataset.data_classes import DatasetsClass, DataLoadersClass
+from learned_retrieval.learned_retrieval.dataset.dataset import BaseCompletionContextDataset
+from learned_retrieval.learned_retrieval.dataset.data_classes import DatasetsClass, DataLoadersClass
 
 def load_data(path, limit_samples=None):
     print('>>Load data')

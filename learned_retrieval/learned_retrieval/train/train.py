@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 
-from learned_retrieval.oracle.train.data_classes import Config
-from learned_retrieval.oracle.train.utils import save_checkpoint, calculate_loss
-from learned_retrieval.oracle.dataset.data_classes import DatasetsClass, DataLoadersClass
+from learned_retrieval.learned_retrieval.train.data_classes import Config
+from learned_retrieval.learned_retrieval.train.utils import save_checkpoint, calculate_loss
+from learned_retrieval.learned_retrieval.dataset.data_classes import DatasetsClass, DataLoadersClass
 
 def train(wandb_run, model, tokenizer, optimizer, scheduler, criterion, dataloaders: DataLoadersClass, datasets: DatasetsClass, config: Config):
     total_loss = 0

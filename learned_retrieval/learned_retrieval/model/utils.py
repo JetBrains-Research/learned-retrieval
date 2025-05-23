@@ -1,6 +1,6 @@
-from learned_retrieval.oracle.model.model import BaseModel
+from learned_retrieval.learned_retrieval.model.model import BaseModel
 from transformers import AutoTokenizer
-from learned_retrieval.oracle.train.data_classes import Config
+from learned_retrieval.learned_retrieval.train.data_classes import Config
 
 def get_model(config: Config):
     print('>>Init model')
