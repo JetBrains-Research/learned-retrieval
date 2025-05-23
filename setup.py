@@ -12,7 +12,7 @@ def main():
     setup(
         name=package_name,
         version='0.0.1',
-        author='kolomyttseva',
+        author='Olga kolomyttseva <olga.kolomyttseva@jetbrains.com>',
         description=package_name,
         package_dir={package_name: package_name},
         packages=packages,
