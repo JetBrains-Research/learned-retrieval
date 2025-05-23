@@ -151,6 +151,14 @@ The training process:
 | Learned Retrieval | ChrF | 41.10 | 33.81 |
 | Brute-Force (Upper Bound) | - | 50.66 | 63.73 |
 
+Our results showed that the path distance method improved code
+completion Exact Match (EM) by only **2% compared to using No
+Context** approach. In contrast, our brute-force approach demon-
+strated that choosing the optimal context file could improve Exact Match (EM)
+by **78% over using No Context** approach.
+Our Learned Retrieval approach using Levenshtein distance achieved
+a **23% improvement over using No Context** approach.
+
 ## Project Structure
 
 - `learned_retrieval/`
