@@ -49,10 +49,8 @@ We created two distinct datasets derived from the original LCA dataset: one base
 
 1. Clone the repository:
 ```bash
-# SSH
-git clone ssh://git@git.jetbrains.team/ml-4-se-lab/learned-retrieval.git
-# or HTTPS
-git clone https://git.jetbrains.team/ml-4-se-lab/learned-retrieval.git
+git clone https://github.com/JetBrains-Research/learned-retrieval.git
+cd learned-retrieval
 ```
 
 2. Create and activate a virtual environment (optional but recommended):
